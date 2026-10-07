@@ -27,12 +27,12 @@ Both commands should print version numbers. If a command is not found, install N
 
 ### Download this version of the project
 
-The completed website is on the `codex/lab5-presentation-tier` branch in our group repository, `ojasvsingh/CSE5234-Lab5`. Select this branch when downloading the project. A pull request lets the group review the changes before merging them into `main`; until then, `main` may still show the starter app.
+The completed website is on the `ht-lab5` branch in our group repository, `ojasvsingh/CSE5234-Lab5`. Select this branch when downloading the project. A pull request lets the group review the changes before merging them into `main`; until then, `main` may still show the starter app.
 
 For a fresh copy, run these commands one line at a time:
 
 ```sh
-git clone --branch codex/lab5-presentation-tier --single-branch https://github.com/ojasvsingh/CSE5234-Lab5.git adventure-beyond
+git clone --branch ht-lab5 --single-branch https://github.com/ojasvsingh/CSE5234-Lab5.git adventure-beyond
 cd adventure-beyond
 ```
 
