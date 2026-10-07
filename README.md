@@ -1,87 +1,213 @@
 # Adventure Beyond
 
-An outdoor gear storefront for **CSE 5234 Lab 5 — Presentation Tier for Web Applications**. Choose from five products, manage a shopping bag, enter payment and shipping details, review the order, and receive a confirmation.
+**Adventure Beyond** is our outdoor gear shopping website for **CSE 5234 Lab 5: Presentation Tier for Web Applications**.
 
-This is a frontend demonstration. No payment is processed, no order is sent to a server, and no shipment is created. AWS, a database, API keys, and backend services are not needed.
+The goal of this lab is to build the pages that a customer sees and uses. A customer can choose products, edit a shopping bag, enter payment and shipping information, check the order, and see a confirmation number.
 
-## Run locally
+**You can run the entire project on your own computer. You do not need AWS, a database, or a backend for this lab.** Orders are demonstrations only: the website does not charge a card or ship products.
 
-Use Node.js **22.12 or later** (Node 20.19+ is also supported).
+## 1. Get the website running
+
+### Before you start
+
+You need:
+
+- **Node.js 22.12 or later**. Node.js lets us run the development tools. It also includes **npm**, which installs the project's libraries. Node 20.19+ is also supported.
+- **Git**, if you use the download command below.
+- A web browser and a terminal, such as Terminal on macOS, PowerShell on Windows, or the terminal inside VS Code.
+
+Check that Node.js and npm are installed:
+
+```sh
+node --version
+npm --version
+```
+
+Both commands should print version numbers. If a command is not found, install Node.js and reopen your terminal before continuing.
+
+### Download this version of the project
+
+The completed website is on the `codex/lab5-presentation-tier` branch in `Rem1L/CSE5234-Lab5`. It has been submitted to the group repository as **PR #1**, a pull request that lets the group review and merge the changes. Until it is merged, the group repository's `main` branch may still show the starter app.
+
+For a fresh copy, run these commands one line at a time:
+
+```sh
+git clone --branch codex/lab5-presentation-tier --single-branch https://github.com/Rem1L/CSE5234-Lab5.git adventure-beyond
+cd adventure-beyond
+```
+
+The first command downloads the correct branch into a new folder called `adventure-beyond`. The second enters that folder. If you already have this version downloaded, open its folder instead. **The folder should contain `package.json` and this README.**
+
+You can also select that branch on GitHub and use **Code → Download ZIP**, then extract the ZIP and open a terminal in the extracted folder.
+
+### Install and start
+
+From the project folder, run:
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Open **http://localhost:5173/purchase**. `npm start` is an alias for the same Vite development server.
+- `npm ci` installs the library versions recorded in `package-lock.json`. Run it the first time you download the project, or after pulling a change to the dependencies.
+- `npm run dev` starts the website on your computer. **Leave this terminal running while you use the website.**
 
-```sh
-npm run build    # Create the production bundle in dist/
-npm run preview  # Preview that bundle at http://localhost:4173
-```
-
-The project uses React, Vite, and React Router. It follows the TA's updated tooling guidance: Create React App and the earlier MySQL/Express dependencies are not used. React Router 7 retains the declarative routing APIs used in the lab and replaces the older dependency with a patched release.
-
-## Lab requirements
-
-| Route | Implemented behavior |
-| --- | --- |
-| `/purchase` | Five hardcoded outdoor products, local illustrations, names, prices, quantity inputs, category filters, and add-to-bag controls. |
-| `/purchase/paymentEntry` | Cardholder name, card number, expiration date, and CVV entry with validation. |
-| `/purchase/shippingEntry` | Name, address line 1, optional address line 2, city, state, and ZIP code. |
-| `/purchase/viewOrder` | Selected items, quantities, total cost, masked payment details, shipping address, edit links, and explicit order confirmation. |
-| `/purchase/viewConfirmation` | Thank-you message, a locally generated confirmation number, purchased items, and order total. |
-
-The bag is accessible from every page. Open **Your bag** in the header to change quantities or remove an item. Checkout pages also include an **Edit your bag** action. Quantities are whole numbers from 1 to 99 per product; use Remove to delete a line.
-
-All money is calculated in integer cents. The demo total is the sum of item prices × quantities, with no shipping or tax charges.
-
-## Demo walkthrough
-
-1. Add two **Ridge 28L Daypacks** and one **Camp Insulated Bottle**. The total should be **$207.00**.
-2. Open the bag and continue to payment.
-3. Enter sample details: **Alex Taylor**, **4242 4242 4242 4242**, a future expiration date in **MM/YY**, and CVV **123**.
-4. Enter a sample US shipping address, such as **123 Trailhead Lane, Columbus, OH 43210**. Address line 2 is optional.
-5. Review the order. Edit payment, shipping, or the bag if needed. Changing the bag requires confirming the details again.
-6. Check the confirmation box and select **Place demo order**.
-7. Verify the order summary and confirmation number. The bag is now empty.
-
-Use sample data only. Card validation checks the input format and expiration date, not authorization or the existence of a card. Confirmation numbers are generated in the browser for the demo.
-
-## State and navigation
-
-- React Context shares the cart, payment, and shipping information across all five pages. Form edits remain available when navigating back and forth within the app.
-- The cart and the latest receipt (confirmation number and product quantities) survive a refresh in the same browser tab through `sessionStorage`.
-- **Card numbers, CVVs, cardholder names, and shipping addresses are never written to browser storage or sent over the network.** They remain in memory and are cleared on refresh and after placing an order.
-- Refreshing an unfinished checkout keeps the bag and returns to payment so the user can re-enter their details. Refreshing a completed order restores its non-sensitive receipt.
-- Opening checkout without a cart returns to the shop. Skipping payment or shipping routes returns to the first incomplete step.
-- The checkout still works in memory if browser storage is unavailable. Malformed stored data is ignored, and stored prices are never trusted.
-
-## Tests
-
-```sh
-npm test                      # Cart arithmetic, state recovery, and validation
-npx playwright install chromium
-npm run test:e2e               # Complete browser flows at desktop and mobile sizes
-```
-
-Browser tests build the production app and start a temporary preview server on **127.0.0.1:4173**; keep that port free before running them. Tests cover quantity changes/removal, empty carts, invalid forms, editing previous steps, route guards, refresh behavior, confirmation receipts, and unavailable or malformed browser storage.
-
-## Project structure
+The terminal should display a local address similar to:
 
 ```text
-src/
-  App.jsx                 Routes and checkout guards
-  components/             Header, shopping bag, form fields, order summary
-  context/ShopContext.jsx  Shared cart and checkout state
-  data/products.js        Five hardcoded products, prices, and image paths
-  lib/                    Cart calculations, storage handling, input validation
-  pages/                  The five required screens
-  styles.css              Responsive storefront and checkout styling
-public/images/            Original SVG product and landscape illustrations
-tests/                    Unit and desktop/mobile browser tests
+Local: http://localhost:5173/
 ```
 
-Product images and fonts are included locally; no external image or font service is needed while using the app. Fontsource packages provide DM Sans and Manrope under their included open font licenses.
+Open **http://localhost:5173/purchase** in your browser. You should see the Adventure Beyond heading, a mountain illustration, and five products.
 
-If a later assignment calls for hosting, upload the `dist/` build to a static host and configure it to serve `index.html` for application routes such as `/purchase/paymentEntry`. Vite's development and preview servers already handle those routes locally.
+If the terminal prints a different port, such as `5174`, use that address instead. To stop the website, press **Ctrl+C** in the terminal. Next time, open the project folder and run `npm run dev` again. You do not need to reinstall everything each time.
+
+## 2. Try a complete order
+
+Follow this example to check that the main flow works:
+
+1. Set the **Ridge 28L Daypack** quantity to **2**, then click **Add to bag**.
+2. Add **1 Camp Insulated Bottle**.
+3. Open the shopping bag in the top-right corner. It should contain **3 items** with a total of **$207.00**: `2 × $89.00 + 1 × $29.00`.
+4. Try changing a quantity or removing a product. The total should update. Restore the two daypacks and one bottle, then click **Continue to payment**.
+5. Enter the sample payment details below, then click **Continue to shipping**.
+6. Enter the sample shipping details below, then click **Review your order**.
+7. Check the items, total, payment details, and address. The payment section shows only the last four card digits. You can edit your payment, address, or shopping bag here.
+8. Check **I've checked my items, payment, and shipping details**, then click **Place demo order**. If you change the bag after checking the box, you need to check it again.
+9. You should see **Adventure, confirmed.**, a number such as `AB-1234ABCD`, and your order summary. The shopping bag should now be empty.
+
+Use these **sample details**, not a real card:
+
+| Payment field | What to enter |
+| --- | --- |
+| Cardholder name | Alex Taylor |
+| Card number | 4242 4242 4242 4242 |
+| Expiration date | 12/30, or another future date in MM/YY format |
+| Security code (CVV) | 123 |
+
+| Shipping field | What to enter |
+| --- | --- |
+| Full name | Alex Taylor |
+| Address line 1 | 123 Trailhead Lane |
+| Address line 2 | Leave blank, or enter Apt 5 |
+| City | Columbus |
+| State | Ohio |
+| ZIP code | 43210 |
+
+This demo accepts US shipping addresses. It checks required fields, the card number's format, the expiration date, the CVV's format, and the ZIP code's format. It does **not** contact a bank or check whether an address exists. The total includes only the products; shipping and tax are not charged.
+
+## 3. How the pages match the assignment
+
+The customer follows this sequence:
+
+**Choose gear → Payment → Shipping → Review order → Confirmation**
+
+A *route* is the part of the website address that selects a page. For example, `/purchase/paymentEntry` opens the payment page.
+
+| Page and route | What it does | Page file |
+| --- | --- | --- |
+| Shop: `/purchase` | Shows five products with pictures, prices, quantity inputs, and Add to bag buttons. | [Purchase.jsx](src/pages/Purchase.jsx) |
+| Payment: `/purchase/paymentEntry` | Collects cardholder name, card number, expiration date, and CVV. | [PaymentEntry.jsx](src/pages/PaymentEntry.jsx) |
+| Shipping: `/purchase/shippingEntry` | Collects the recipient's name, two address lines, city, state, and ZIP code. Address line 2 is optional. | [ShippingEntry.jsx](src/pages/ShippingEntry.jsx) |
+| Review: `/purchase/viewOrder` | Shows the items and total, payment details, and shipping address. Lets the customer edit and confirm the order. | [ViewOrder.jsx](src/pages/ViewOrder.jsx) |
+| Confirmation: `/purchase/viewConfirmation` | Thanks the customer and shows a confirmation number and order summary. | [Confirmation.jsx](src/pages/Confirmation.jsx) |
+
+The shopping bag is available on every page. It supports quantities from **1 to 99** per product. Use **Remove** to delete an item. Product information is written directly in the project, which is allowed for this lab. Each demo order gets a confirmation number generated in the browser.
+
+Start at the shop when demonstrating the project. Opening a later checkout page without completing the earlier steps sends you back to the step you still need to fill in. An empty bag sends you back to the shop.
+
+## 4. Understand and change the code
+
+### What the main tools do
+
+- **React** builds the screen from reusable pieces called *components*. For example, the shopping bag is one component that every page can use.
+- **Vite** starts the local development server and prepares the website files for hosting. We use it instead of Create React App, following the TA's updated instructions.
+- **React Router** chooses which page to display when the address changes. This project uses version 7 with the basic routing APIs also shown in the lab's version 6 examples.
+- **React Context** gives the pages one shared place to read and update the cart, payment information, and shipping information.
+
+### Which file should I open?
+
+| If you want to… | Start here |
+| --- | --- |
+| Change product names, descriptions, or prices | [src/data/products.js](src/data/products.js) |
+| Change a product's picture | [public/images](public/images), then update its image path in `products.js` if needed |
+| Change colors, spacing, fonts, or mobile layout | [src/styles.css](src/styles.css) |
+| Change the header, navigation, or footer | [src/components/Layout.jsx](src/components/Layout.jsx) |
+| Change the shopping bag's layout or buttons | [src/components/CartDrawer.jsx](src/components/CartDrawer.jsx) |
+| Change the order summary shown beside checkout | [src/components/OrderSummary.jsx](src/components/OrderSummary.jsx) |
+| Understand how pages share information | [src/context/ShopContext.jsx](src/context/ShopContext.jsx) |
+| Change input validation rules | [src/lib/validation.js](src/lib/validation.js) |
+| Understand quantity changes, totals, or saved cart data | [src/lib/shop.js](src/lib/shop.js) |
+| Change routes or rules for entering checkout pages | [src/App.jsx](src/App.jsx) |
+
+Prices are stored in **cents**. For example, `priceCents: 8900` means **$89.00**. Using whole-number cents keeps price calculations exact.
+
+To try a small edit, open `src/data/products.js`, change a product description, and save the file while `npm run dev` is running. The browser should update automatically. Page files ending in `.jsx` contain JavaScript together with HTML-like markup that describes the screen.
+
+### Why information survives some actions but not others
+
+The current information used by React is called *state*. Context shares that state between the pages, so pressing Back or using the edit links does not discard the form values.
+
+A full browser refresh restarts the app. We save only the cart and the latest order receipt in **sessionStorage**, the browser's storage for the current tab. Payment details and shipping addresses stay in memory and are never written to that storage or sent to a server.
+
+| Action | Expected result |
+| --- | --- |
+| Move between pages or use the edit links | Your current cart and form values remain available. |
+| Refresh during checkout | The cart remains, but payment and shipping details are cleared. Enter them again, starting at payment. |
+| Place an order | A receipt is created. The cart, payment details, and shipping details are cleared. |
+| Refresh the confirmation page | The latest receipt still appears in the same tab. |
+| Use a browser that blocks session storage | The flow still works until refresh, but the cart and receipt cannot be restored afterward. |
+
+Images and fonts are included with the project, so the running app does not depend on an external image or font service. The SVG illustrations are original; the Fontsource packages include the font licenses.
+
+## 5. Check your changes
+
+After an edit, run through the sample order in Section 2. Also try submitting an empty form and removing every item from the bag. The app should show helpful messages or return to the shop, rather than crash.
+
+There are two types of automated checks. Run them in a **second terminal opened in the project folder**:
+
+**Unit tests** check individual pieces of logic, such as totals and form validation. They do not open a browser.
+
+```sh
+npm test
+```
+
+**Browser tests** click through the website automatically, using desktop and phone screen sizes. These are also called *end-to-end tests*, abbreviated `e2e`.
+
+```sh
+npx playwright install chromium
+npm run test:e2e
+```
+
+The first command installs the test browser. You normally only need it once, or after updating Playwright. The second command builds the app, starts its own temporary server on port **4173**, and runs the tests. Keep that port free; you do not need to start a preview server yourself. The normal development server on port 5173 can stay running.
+
+The suite currently contains **7 unit tests and 16 browser tests**. A successful run reports that all tests passed. Browser checks cover checkout, editing items and forms, invalid input, refresh behavior, and unavailable or damaged saved data. The phone tests simulate a phone-sized screen in Chromium; they are not tests on a physical phone.
+
+### Optional: check the build for hosting
+
+You do not need this step just to work on the lab locally.
+
+```sh
+npm run build
+npm run preview
+```
+
+`build` creates a folder called `dist` containing the website files. `preview` lets you check those files locally, normally at **http://localhost:4173/purchase**. Neither command uploads anything to AWS or publishes the site. Stop preview with **Ctrl+C** before running the browser tests.
+
+If a later assignment requires online hosting, the host must serve `index.html` for the application's routes. The local Vite servers already handle this.
+
+## 6. Common problems
+
+| What you see | What to do |
+| --- | --- |
+| `node` or `npm` is not recognized | Install a supported Node.js version, then close and reopen your terminal. |
+| An error saying `package.json` cannot be found | Your terminal is in the wrong folder. Enter the downloaded project folder before running npm commands. |
+| A React logo or the default starter page | Check that you downloaded the completed branch described in Section 1. The group repository's `main` may still be waiting for the PR to be merged. |
+| The browser cannot connect | Check that `npm run dev` is still running. Use the address printed in its terminal. Open that address in a browser; do not double-click `index.html`. |
+| Port 5173 is already in use | Vite may choose the next available port. Use the address it prints, followed by `/purchase`. |
+| Refresh sends you back to payment | This is expected. The cart is saved, but card and address information must be entered again. |
+| The Place demo order button is disabled | Check the box confirming that you reviewed the details. Editing the bag requires checking it again. |
+| Browser tests cannot find a browser executable | Run `npx playwright install chromium`, then try `npm run test:e2e` again. |
+| Browser tests say port 4173 is in use | Stop any `npm run preview` process using that port, then rerun the tests. |
+
+`npm start` also works; it is another name for `npm run dev` in this project. You do not need to run both.
