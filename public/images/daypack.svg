@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <defs><linearGradient id="body" x1="142" y1="103" x2="269" y2="329" gradientUnits="userSpaceOnUse"><stop stop-color="#8a9871"/><stop offset="1" stop-color="#4b634b"/></linearGradient><linearGradient id="pocket" x1="164" y1="199" x2="246" y2="328" gradientUnits="userSpaceOnUse"><stop stop-color="#82916c"/><stop offset="1" stop-color="#617557"/></linearGradient></defs>
+  <ellipse cx="203" cy="347" rx="89" ry="12" fill="#263b28" opacity=".09"/>
+  <path d="M159 110c-43 21-49 167-28 201l16-8c-14-53-9-132 19-169m77-24c45 21 52 160 35 199l-18-6c13-47 7-133-23-169" stroke="#344d3b" stroke-width="14" stroke-linecap="round"/>
+  <path d="M180 89V74c0-15 40-15 40 0v15" stroke="#3e553d" stroke-width="10"/>
+  <path d="M129 145c1-48 35-64 72-64s74 20 74 64l9 159c2 25-21 39-82 39-54 0-81-11-80-39l7-159Z" fill="url(#body)" stroke="#526547" stroke-width="2"/>
+  <path d="M131 146c11-34 27-47 70-47s60 17 71 47" stroke="#acb394" stroke-width="2"/>
+  <path d="M127 157c50 11 94 9 148-1" stroke="#425c43" stroke-width="5"/>
+  <path d="M131 160c46 11 100 9 140-1" stroke="#b5b79b" stroke-width="1.5"/>
+  <path d="m263 156 2 13" stroke="#c9baa0" stroke-width="4" stroke-linecap="round"/>
+  <path d="M124 217h-14l-2 82c0 11 10 14 20 12m148-94h17l2 84c-1 10-8 12-18 10" fill="#425e46"/>
+  <path d="M112 232h12m156-1h11m-181 11h14m157 1h10m-181 12h15m155 0h12" stroke="#78906d" stroke-width="2"/>
+  <path d="M146 223c21-16 88-16 110 0l4 76c0 19-23 23-58 23-34 0-59-3-59-23l3-76Z" fill="url(#pocket)" stroke="#51684a" stroke-width="2"/>
+  <path d="M150 231c29-13 73-14 102 0" stroke="#354f3b" stroke-width="4"/>
+  <path d="M152 234c31-12 72-12 98-1" stroke="#b6ba97" stroke-width="1"/>
+  <path d="m247 232 1 12" stroke="#cdb896" stroke-width="3" stroke-linecap="round"/>
+  <path d="M155 171v43m94-43v43" stroke="#364f3c" stroke-width="11"/>
+  <rect x="149" y="193" width="13" height="20" rx="3" fill="#2d4334"/><rect x="242" y="193" width="13" height="20" rx="3" fill="#2d4334"/>
+  <rect x="152" y="197" width="7" height="7" rx="1" fill="#6b7959"/><rect x="245" y="197" width="7" height="7" rx="1" fill="#6b7959"/>
+  <rect x="182" y="262" width="36" height="27" rx="3" fill="#cbb998" transform="rotate(-2 182 262)"/>
+  <path d="m189 280 9-12 5 7 5-5 5 10h-24Z" fill="#5b684b"/>
+  <path d="M141 302v-55m126 51-3-75" stroke="#9ba782" stroke-width="2" opacity=".65"/>
+</svg>

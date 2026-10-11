@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <ellipse cx="203" cy="351" rx="76" ry="10" fill="#3a483b" opacity=".08"/>
+  <g transform="rotate(-12 159 206)">
+    <path d="M151 115c-34-6-35-49-15-52 11-2 16 18 16 18" stroke="#3d4b43" stroke-width="6"/>
+    <path d="M160 118v198" stroke="#3d4c45" stroke-width="10"/>
+    <path d="M160 181v80" stroke="#969d8c" stroke-width="7"/>
+    <path d="M158 183v76" stroke="#d0d4c5" stroke-width="2"/>
+    <path d="M160 265v59" stroke="#4e6053" stroke-width="6"/>
+    <path d="M160 316v26" stroke="#2c3d34" stroke-width="4"/>
+    <rect x="148" y="57" width="24" height="72" rx="10" fill="#3b4a3f"/>
+    <path d="M152 66v41m0 9v5" stroke="#748071" stroke-width="3" stroke-linecap="round"/>
+    <path d="M149 78h21m-21 9h21m-21 9h21m-21 9h21" stroke="#263b31" stroke-width="2"/>
+    <rect x="153" y="139" width="14" height="25" rx="3" fill="#b0824c"/>
+    <rect x="153" y="253" width="14" height="12" rx="2" fill="#34463b"/>
+    <path d="m156 258 13 3" stroke="#6e7c66" stroke-width="3"/>
+    <ellipse cx="160" cy="316" rx="16" ry="4" fill="#39493e"/>
+  </g>
+  <g transform="rotate(12 239 206)">
+    <path d="M246 114c31-8 32-48 14-52-12-2-18 17-18 17" stroke="#3d4b43" stroke-width="6"/>
+    <path d="M239 117v199" stroke="#3d4c45" stroke-width="10"/>
+    <path d="M239 181v80" stroke="#969d8c" stroke-width="7"/>
+    <path d="M237 183v76" stroke="#d0d4c5" stroke-width="2"/>
+    <path d="M239 265v59" stroke="#4e6053" stroke-width="6"/>
+    <path d="M239 316v26" stroke="#2c3d34" stroke-width="4"/>
+    <rect x="227" y="57" width="24" height="72" rx="10" fill="#3b4a3f"/>
+    <path d="M231 66v41m0 9v5" stroke="#748071" stroke-width="3" stroke-linecap="round"/>
+    <path d="M228 78h21m-21 9h21m-21 9h21m-21 9h21" stroke="#263b31" stroke-width="2"/>
+    <rect x="232" y="139" width="14" height="25" rx="3" fill="#b0824c"/>
+    <rect x="232" y="253" width="14" height="12" rx="2" fill="#34463b"/>
+    <path d="m235 258 13 3" stroke="#6e7c66" stroke-width="3"/>
+    <ellipse cx="239" cy="316" rx="16" ry="4" fill="#39493e"/>
+  </g>
+</svg>
