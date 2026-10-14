@@ -1,10 +1,12 @@
 # Adventure Beyond
 
-**Adventure Beyond** is our outdoor gear shopping website for **CSE 5234 Lab 5: Presentation Tier for Web Applications**.
+**Adventure Beyond** is our outdoor gear shopping website for **CSE 5234 Labs 5 and 6**.
 
-The goal of this lab is to build the pages that a customer sees and uses. A customer can choose products, edit a shopping bag, enter payment and shipping information, check the order, and see a confirmation number.
+Lab 5 provides the shopping flow: choose products, edit a shopping bag, enter payment and shipping information, check the order, and see a confirmation number. Lab 6 adds a home page, company information, an executive profile section, and customer support pages, with the same navigation and footer throughout the website.
 
-**You can run the entire project on your own computer. You do not need AWS, a database, or a backend for this lab.** Orders are demonstrations only: the website does not charge a card or ship products.
+**You can run the entire project on your own computer. You do not need AWS, a database, or a backend for these labs.** Orders and support requests are demonstrations only: the website does not charge a card, ship products, or send messages.
+
+**Before submitting Lab 6:** the group still needs to add each member's name, photo, executive title, and background. The About Us page currently marks those profiles as pending. Section 4 explains how to fill them in.
 
 ## 1. Get the website running
 
@@ -27,7 +29,7 @@ Both commands should print version numbers. If a command is not found, install N
 
 ### Download this version of the project
 
-The completed website is on the `ht-lab5` branch in our group repository, `ojasvsingh/CSE5234-Lab5`. Select this branch when downloading the project. A pull request lets the group review the changes before merging them into `main`; until then, `main` may still show the starter app.
+The work for both labs is on the `ht-lab5` branch in our group repository, `ojasvsingh/CSE5234-Lab5`. Select this branch to get the Lab 6 additions. A pull request lets the group review changes before merging them into `main`.
 
 For a fresh copy, run these commands one line at a time:
 
@@ -58,13 +60,13 @@ The terminal should display a local address similar to:
 Local: http://localhost:5173/
 ```
 
-Open **http://localhost:5173/purchase** in your browser. You should see the Adventure Beyond heading, a mountain illustration, and five products.
+Open **http://localhost:5173/** in your browser. You should see the Adventure Beyond home page, a mountain illustration, and links to **Home**, **Shop gear**, **About us**, and **Contact us**. Click **Shop gear** to see all five products at `/purchase`.
 
 If the terminal prints a different port, such as `5174`, use that address instead. To stop the website, press **Ctrl+C** in the terminal. Next time, open the project folder and run `npm run dev` again. You do not need to reinstall everything each time.
 
 ## 2. Try a complete order
 
-Follow this example to check that the main flow works:
+Click **Shop gear** in the main menu, then follow this example to check that the main flow works:
 
 1. Set the **Ridge 28L Daypack** quantity to **2**, then click **Add to bag**.
 2. Add **1 Camp Insulated Bottle**.
@@ -98,7 +100,17 @@ This demo accepts US shipping addresses. It checks required fields, the card num
 
 ## 3. How the pages match the assignment
 
-The customer follows this sequence:
+Lab 6 adds these pages and shared elements:
+
+| Page or requirement | What it does | Where to find it |
+| --- | --- | --- |
+| Home: `/` | Introduces the brand, highlights three products, and links to the collection and company story. | [Home.jsx](src/pages/Home.jsx) |
+| About Us: `/about` | Explains the mission, vision, and company strategy. Includes the executive profile section; member details must be supplied by the group. | [About.jsx](src/pages/About.jsx) |
+| Contact Us: `/contact` | Explains who handles orders, returns, and product questions. Includes example support policies, FAQ, and a request preview form. | [Contact.jsx](src/pages/Contact.jsx) |
+| Consistent menu and footer | Gives every page the same navigation, shopping bag access, and company/support links. All four main menu links remain visible on a phone. | [Layout.jsx](src/components/Layout.jsx) |
+| CSS styling and optional input validation | Uses a consistent outdoor theme, adjusts layouts for small screens, and checks checkout and support input. | [site.css](src/site.css), [styles.css](src/styles.css) |
+
+The Lab 5 shopping flow is still available:
 
 **Choose gear → Payment → Shipping → Review order → Confirmation**
 
@@ -116,6 +128,17 @@ The shopping bag is available on every page. It supports quantities from **1 to 
 
 Start at the shop when demonstrating the project. Opening a later checkout page without completing the earlier steps sends you back to the step you still need to fill in. An empty bag sends you back to the shop.
 
+### Try the Lab 6 pages
+
+1. Open **Home**, then follow a featured product to its card in **Shop gear**.
+2. Open **About us** and find the mission, vision, strategy, and **Meet our executives** sections.
+3. Open **Contact us**. Choose **Get help with a return**; the form should select **Returns & exchanges**.
+4. Try previewing an empty request. Fill in the fields using sample details, such as `Alex Taylor`, `alex@example.com`, and a description of the problem. The order number is optional.
+5. Click **Preview support request**. Check the selected team and details, then use **Download preview** to save a text copy. Nothing is sent to a server.
+6. Open a FAQ answer. Try the footer links to returns and FAQ, and make the browser narrower to check the mobile layout.
+
+The `.example` support email address is an intentional placeholder, not a monitored inbox. The return policies are sample content for our fictional company. Contact details entered in the form stay in memory and clear when you leave or refresh that page. Editing the form removes the old preview so you do not download outdated information.
+
 ## 4. Understand and change the code
 
 ### What the main tools do
@@ -132,6 +155,10 @@ Start at the shop when demonstrating the project. Opening a later checkout page 
 | Change product names, descriptions, or prices | [src/data/products.js](src/data/products.js) |
 | Change a product's picture | [public/images](public/images), then update its image path in `products.js` if needed |
 | Change colors, spacing, fonts, or mobile layout | [src/styles.css](src/styles.css) |
+| Change Home, About Us, or Contact Us layouts | [src/site.css](src/site.css) and the matching file in [src/pages](src/pages) |
+| Change the mission, vision, strategy, or team profiles | [src/data/company.js](src/data/company.js) |
+| Change support teams, sample policies, or FAQ answers | [src/data/company.js](src/data/company.js) |
+| Change support form rules or the downloaded preview | [src/lib/support.js](src/lib/support.js) |
 | Change the header, navigation, or footer | [src/components/Layout.jsx](src/components/Layout.jsx) |
 | Change the shopping bag's layout or buttons | [src/components/CartDrawer.jsx](src/components/CartDrawer.jsx) |
 | Change the order summary shown beside checkout | [src/components/OrderSummary.jsx](src/components/OrderSummary.jsx) |
@@ -143,6 +170,32 @@ Start at the shop when demonstrating the project. Opening a later checkout page 
 Prices are stored in **cents**. For example, `priceCents: 8900` means **$89.00**. Using whole-number cents keeps price calculations exact.
 
 To try a small edit, open `src/data/products.js`, change a product description, and save the file while `npm run dev` is running. The browser should update automatically. Page files ending in `.jsx` contain JavaScript together with HTML-like markup that describes the screen.
+
+### Add your group's executive profiles
+
+Lab 6 asks for an image of **each actual team member**, their job title, and their education, experience, or passions. We have left this information empty rather than making up personal details.
+
+1. Put a member's photo in [public/images/team](public/images/team), for example `member-name.jpg`.
+2. Open [src/data/company.js](src/data/company.js) and find `export const teamMembers = [];`.
+3. Replace the empty array with one entry per member, following the example below. Replace all sample text with details the member provides.
+
+```js
+export const teamMembers = [
+  {
+    id: 'member-name',
+    name: 'Member name',
+    title: 'Member-chosen executive title',
+    education: 'Their degree or area of study',
+    experience: 'Their projects, work, or team responsibilities',
+    passion: 'Their interests inside or outside the classroom',
+    image: '/images/team/member-name.jpg',
+  },
+];
+```
+
+For more people, add more `{ ... }` entries inside the same brackets, separated by commas. Each `id` should be different. The image path begins with `/images/`, not `/public/images/`. Save the file and check **About us**: the cards appear automatically, with one image and profile per entry.
+
+If a photo is missing, the page shows a clearly labeled placeholder. Add the actual photo before submission. The team can choose playful executive titles for the fictional company, but biographies should describe the members themselves.
 
 ### Why information survives some actions but not others
 
@@ -181,7 +234,7 @@ npm run test:e2e
 
 The first command installs the test browser. You normally only need it once, or after updating Playwright. The second command builds the app, starts its own temporary server on port **4173**, and runs the tests. Keep that port free; you do not need to start a preview server yourself. The normal development server on port 5173 can stay running.
 
-The suite currently contains **7 unit tests and 16 browser tests**. A successful run reports that all tests passed. Browser checks cover checkout, editing items and forms, invalid input, refresh behavior, and unavailable or damaged saved data. The phone tests simulate a phone-sized screen in Chromium; they are not tests on a physical phone.
+The suite currently contains **12 unit tests and 28 browser tests**. A successful run reports that all tests passed. Browser checks cover checkout, the new pages, navigation, FAQ, support form validation and downloads, refresh behavior, and unavailable or damaged saved data. The phone tests simulate a phone-sized screen in Chromium; they are not tests on a physical phone. Passing tests does not replace adding the real team profiles before submission.
 
 ### Optional: check the build for hosting
 
@@ -192,7 +245,7 @@ npm run build
 npm run preview
 ```
 
-`build` creates a folder called `dist` containing the website files. `preview` lets you check those files locally, normally at **http://localhost:4173/purchase**. Neither command uploads anything to AWS or publishes the site. Stop preview with **Ctrl+C** before running the browser tests.
+`build` creates a folder called `dist` containing the website files. `preview` lets you check those files locally, normally at **http://localhost:4173/**. Neither command uploads anything to AWS or publishes the site. Stop preview with **Ctrl+C** before running the browser tests.
 
 If a later assignment requires online hosting, the host must serve `index.html` for the application's routes. The local Vite servers already handle this.
 
@@ -202,12 +255,14 @@ If a later assignment requires online hosting, the host must serve `index.html` 
 | --- | --- |
 | `node` or `npm` is not recognized | Install a supported Node.js version, then close and reopen your terminal. |
 | An error saying `package.json` cannot be found | Your terminal is in the wrong folder. Enter the downloaded project folder before running npm commands. |
-| A React logo or the default starter page | Check that you downloaded the completed branch described in Section 1. The group repository's `main` may still be waiting for the PR to be merged. |
+| A React logo or missing Lab 6 pages | Check that you downloaded the `ht-lab5` branch described in Section 1. The `main` branch may not yet contain the latest changes. |
 | The browser cannot connect | Check that `npm run dev` is still running. Use the address printed in its terminal. Open that address in a browser; do not double-click `index.html`. |
-| Port 5173 is already in use | Vite may choose the next available port. Use the address it prints, followed by `/purchase`. |
+| Port 5173 is already in use | Vite may choose the next available port. Use the address it prints to open the home page. |
 | Refresh sends you back to payment | This is expected. The cart is saved, but card and address information must be entered again. |
 | The Place demo order button is disabled | Check the box confirming that you reviewed the details. Editing the bag requires checking it again. |
 | Browser tests cannot find a browser executable | Run `npx playwright install chromium`, then try `npm run test:e2e` again. |
 | Browser tests say port 4173 is in use | Stop any `npm run preview` process using that port, then rerun the tests. |
+| About Us says profiles are pending | Add the actual group members to `teamMembers` in `src/data/company.js`, as described in Section 4. |
+| A support request was not delivered | The support form deliberately creates a local preview only. Sending requests would require a real inbox and a backend in a later lab. |
 
 `npm start` also works; it is another name for `npm run dev` in this project. You do not need to run both.

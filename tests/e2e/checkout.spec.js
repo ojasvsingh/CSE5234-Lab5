@@ -57,7 +57,7 @@ test.afterEach(async ({ page }) => {
 });
 
 test('all five products and local images render; filters and cart editing work', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/purchase');
   await expect(page).toHaveURL(/\/purchase$/);
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Good gear.');
   await expect(page.getByRole('article')).toHaveCount(5);
