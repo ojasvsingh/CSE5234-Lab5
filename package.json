@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Adventure Beyond storefront for CSE 5234 Lab 5",
+  "description": "Adventure Beyond storefront and company website for CSE 5234 Labs 5 and 6",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
