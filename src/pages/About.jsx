@@ -14,18 +14,20 @@ function ExecutiveProfile({ member }) {
           alt={hasPortrait ? `Portrait of ${member.name}` : `Portrait not yet available for ${member.name}`}
           loading="lazy"
           width="400"
-          height="440"
+          height="560"
           onError={() => { if (hasPortrait) setFailedImage(member.image); }}
         />
         {!hasPortrait && <span>PORTRAIT TO BE ADDED</span>}
       </div>
-      <p className="eyebrow team-role">{member.title || 'Role to be added'}</p>
-      <h3>{member.name}</h3>
-      <dl>
-        <div><dt>Education</dt><dd>{member.education || 'Education details to be added.'}</dd></div>
-        <div><dt>Experience</dt><dd>{member.experience || 'Experience details to be added.'}</dd></div>
-        <div><dt>Outside the office</dt><dd>{member.passion || 'Interests to be added.'}</dd></div>
-      </dl>
+      <div className="team-details">
+        <p className="eyebrow team-role">{member.title || 'Role to be added'}</p>
+        <h3>{member.name}</h3>
+        <dl>
+          <div><dt>Education</dt><dd>{member.education || 'Education details to be added.'}</dd></div>
+          <div><dt>Experience</dt><dd>{member.experience || 'Experience details to be added.'}</dd></div>
+          <div><dt>Outside the office</dt><dd>{member.passion || 'Interests to be added.'}</dd></div>
+        </dl>
+      </div>
     </article>
   );
 }

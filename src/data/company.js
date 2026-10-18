@@ -18,8 +18,8 @@ export const company = {
   ],
 };
 
-// Add one entry per actual group member after they supply their information.
-// Do not use invented names, credentials, or portraits.
+// Add one entry per group member, using their supplied name and photo.
+// Haotian approved a fictional executive role and biography for this course project.
 // Example shape (replace every value before adding it to the array):
 // {
 //   id: 'member-name',
@@ -30,7 +30,17 @@ export const company = {
 //   passion: 'Member-provided interests',
 //   image: '/images/team/member-name.jpg',
 // }
-export const teamMembers = [];
+export const teamMembers = [
+  {
+    id: 'haotian-luo',
+    name: 'Haotian Luo',
+    title: 'Chief Technology Officer (CTO)',
+    education: 'Computer science background, with a focus on distributed systems, web development, and software engineering.',
+    experience: 'Leads the technology behind Adventure Beyond, bringing product browsing, cart management, and checkout together in one easy-to-use storefront. Enjoys building clear interfaces and solving practical engineering problems.',
+    passion: 'Exploring new hiking trails, photography, and finding simple ways to make technology more useful in everyday life.',
+    image: '/images/team/haotian-luo.jpg',
+  },
+];
 
 // Reserved example address: this classroom storefront has no monitored inbox.
 export const support = {

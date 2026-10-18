@@ -6,7 +6,7 @@ Lab 5 provides the shopping flow: choose products, edit a shopping bag, enter pa
 
 **You can run the entire project on your own computer. You do not need AWS, a database, or a backend for these labs.** Orders and support requests are demonstrations only: the website does not charge a card, ship products, or send messages.
 
-**Before submitting Lab 6:** the group still needs to add each member's name, photo, executive title, and background. The About Us page currently marks those profiles as pending. Section 4 explains how to fill them in.
+**Before submitting Lab 6:** Haotian Luo's photo and executive profile are included. The group still needs to add the other members' names, photos, executive titles, and backgrounds. Section 4 explains how to add them.
 
 ## 1. Get the website running
 
@@ -105,7 +105,7 @@ Lab 6 adds these pages and shared elements:
 | Page or requirement | What it does | Where to find it |
 | --- | --- | --- |
 | Home: `/` | Introduces the brand, highlights three products, and links to the collection and company story. | [Home.jsx](src/pages/Home.jsx) |
-| About Us: `/about` | Explains the mission, vision, and company strategy. Includes the executive profile section; member details must be supplied by the group. | [About.jsx](src/pages/About.jsx) |
+| About Us: `/about` | Explains the mission, vision, and company strategy. Shows Haotian Luo's executive profile; the other members still need to be added. | [About.jsx](src/pages/About.jsx) |
 | Contact Us: `/contact` | Explains who handles orders, returns, and product questions. Includes example support policies, FAQ, and a request preview form. | [Contact.jsx](src/pages/Contact.jsx) |
 | Consistent menu and footer | Gives every page the same navigation, shopping bag access, and company/support links. All four main menu links remain visible on a phone. | [Layout.jsx](src/components/Layout.jsx) |
 | CSS styling and optional input validation | Uses a consistent outdoor theme, adjusts layouts for small screens, and checks checkout and support input. | [site.css](src/site.css), [styles.css](src/styles.css) |
@@ -173,29 +173,27 @@ To try a small edit, open `src/data/products.js`, change a product description, 
 
 ### Add your group's executive profiles
 
-Lab 6 asks for an image of **each actual team member**, their job title, and their education, experience, or passions. We have left this information empty rather than making up personal details.
+Lab 6 asks for an image of **each actual team member**, their job title, and their education, experience, or passions. Haotian Luo's name and photo are included, with a fictional CTO role and biography written for this course project. The other members still need to be added.
 
 1. Put a member's photo in [public/images/team](public/images/team), for example `member-name.jpg`.
-2. Open [src/data/company.js](src/data/company.js) and find `export const teamMembers = [];`.
-3. Replace the empty array with one entry per member, following the example below. Replace all sample text with details the member provides.
+2. Open [src/data/company.js](src/data/company.js) and find `export const teamMembers = [`.
+3. Keep Haotian's existing entry. Add a new `{ ... }` entry for each remaining member before the closing `];`, using the example below and text the member provides or approves.
 
 ```js
-export const teamMembers = [
-  {
-    id: 'member-name',
-    name: 'Member name',
-    title: 'Member-chosen executive title',
-    education: 'Their degree or area of study',
-    experience: 'Their projects, work, or team responsibilities',
-    passion: 'Their interests inside or outside the classroom',
-    image: '/images/team/member-name.jpg',
-  },
-];
+{
+  id: 'member-name',
+  name: 'Member name',
+  title: 'Member-chosen executive title',
+  education: 'Their degree or area of study',
+  experience: 'Their projects, work, or team responsibilities',
+  passion: 'Their interests inside or outside the classroom',
+  image: '/images/team/member-name.jpg',
+},
 ```
 
 For more people, add more `{ ... }` entries inside the same brackets, separated by commas. Each `id` should be different. The image path begins with `/images/`, not `/public/images/`. Save the file and check **About us**: the cards appear automatically, with one image and profile per entry.
 
-If a photo is missing, the page shows a clearly labeled placeholder. Add the actual photo before submission. The team can choose playful executive titles for the fictional company, but biographies should describe the members themselves.
+If a photo is missing, the page shows a clearly labeled placeholder. Add the actual photo before submission. Members can choose executive titles and approve a biography for the fictional company, as Haotian has done. The page uses a side-by-side layout for one profile and a card grid when more people are added; both layouts adapt to phones.
 
 ### Why information survives some actions but not others
 
