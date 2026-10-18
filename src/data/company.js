@@ -33,12 +33,12 @@ export const teamMembers = [
   },
   {
     id: 'member-2',
-    name: '',
-    title: '',
-    education: '',
-    experience: '',
-    passion: '',
-    image: '',
+    name: 'Sai Chappidi',
+    title: 'Head of Platform',
+    education: 'Pursuing a Bachelor of Science in Computer Science and Engineering with a focus on software engineering, web development, and security.',
+    experience: 'Oversees the platform architecture and technical execution behind the web storefront of Adventure Beyond, streamlining catalog browsing, shopping cart workflows, and checkout operations into a cohesive experience.',
+    passion: 'Deep-dive music production analysis across varied genres, competitive strategy and data-driven sports modeling, and experimenting with precision scratch cooking.',
+    image: '/images/team/Sai_Chappidi.png',
   },
   {
     id: 'member-3',
