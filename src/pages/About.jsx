@@ -3,15 +3,16 @@ import { Link } from 'react-router-dom';
 import { FiArrowRight, FiArrowUpRight, FiCompass } from 'react-icons/fi';
 import { company, teamMembers } from '../data/company.js';
 
-function ExecutiveProfile({ member }) {
+function ExecutiveProfile({ member, index }) {
   const [failedImage, setFailedImage] = useState(null);
   const hasPortrait = Boolean(member.image) && failedImage !== member.image;
+  const displayName = member.name || `Team member ${index + 1}`;
   return (
     <article className="team-card">
       <div className="team-photo">
         <img
           src={hasPortrait ? member.image : '/images/team-placeholder.svg'}
-          alt={hasPortrait ? `Portrait of ${member.name}` : `Portrait not yet available for ${member.name}`}
+          alt={hasPortrait ? `Portrait of ${displayName}` : `Portrait not yet available for ${displayName}`}
           loading="lazy"
           width="400"
           height="560"
@@ -21,7 +22,7 @@ function ExecutiveProfile({ member }) {
       </div>
       <div className="team-details">
         <p className="eyebrow team-role">{member.title || 'Role to be added'}</p>
-        <h3>{member.name}</h3>
+        <h3>{displayName}</h3>
         <dl>
           <div><dt>Education</dt><dd>{member.education || 'Education details to be added.'}</dd></div>
           <div><dt>Experience</dt><dd>{member.experience || 'Experience details to be added.'}</dd></div>
@@ -77,7 +78,7 @@ export default function About() {
           <span className="team-kicker">Different perspectives.<br />One shared adventure.</span>
         </div>
         {teamMembers.length > 0 ? (
-          <div className="team-grid">{teamMembers.map((member) => <ExecutiveProfile member={member} key={member.id} />)}</div>
+          <div className="team-grid">{teamMembers.map((member, index) => <ExecutiveProfile member={member} index={index} key={member.id} />)}</div>
         ) : (
           <div className="team-pending">
             <img src="/images/team-placeholder.svg" alt="A placeholder silhouette awaiting a team portrait" width="180" height="198" />

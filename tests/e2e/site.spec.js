@@ -64,10 +64,13 @@ test('the company page explains mission, vision, strategy, and the executive pro
   await expect(page.locator('.strategy-grid article')).toHaveCount(3);
   if (teamMembers.length) {
     await expect(page.locator('.team-card')).toHaveCount(teamMembers.length);
-    for (const member of teamMembers) {
-      const profile = page.locator('.team-card').filter({ has: page.getByRole('heading', { name: member.name, exact: true }) });
-      await expect(profile).toContainText(member.title);
-      await expect(profile).toContainText(member.education);
+    for (const [index, member] of teamMembers.entries()) {
+      const profile = page.locator('.team-card').nth(index);
+      await expect(profile.getByRole('heading', { name: member.name || `Team member ${index + 1}`, exact: true })).toBeVisible();
+      await expect(profile).toContainText(member.title || 'Role to be added');
+      await expect(profile).toContainText(member.education || 'Education details to be added.');
+      await profile.locator('img').scrollIntoViewIfNeeded();
+      await expect(profile.locator('img')).toHaveAttribute('src', member.image || '/images/team-placeholder.svg');
       await expect(profile.locator('img')).toHaveJSProperty('complete', true);
       expect(await profile.locator('img').evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
     }

@@ -18,18 +18,9 @@ export const company = {
   ],
 };
 
-// Add one entry per group member, using their supplied name and photo.
+// Our group has three members. Fill the two blank entries below in place.
+// Each member can keep their id and replace the empty strings with their details.
 // Haotian approved a fictional executive role and biography for this course project.
-// Example shape (replace every value before adding it to the array):
-// {
-//   id: 'member-name',
-//   name: 'Member-provided name',
-//   title: 'Member-chosen executive title',
-//   education: 'Member-provided education',
-//   experience: 'Member-provided experience',
-//   passion: 'Member-provided interests',
-//   image: '/images/team/member-name.jpg',
-// }
 export const teamMembers = [
   {
     id: 'haotian-luo',
@@ -39,6 +30,24 @@ export const teamMembers = [
     experience: 'Leads the technology behind Adventure Beyond, bringing product browsing, cart management, and checkout together in one easy-to-use storefront. Enjoys building clear interfaces and solving practical engineering problems.',
     passion: 'Exploring new hiking trails, photography, and finding simple ways to make technology more useful in everyday life.',
     image: '/images/team/haotian-luo.jpg',
+  },
+  {
+    id: 'member-2',
+    name: '',
+    title: '',
+    education: '',
+    experience: '',
+    passion: '',
+    image: '',
+  },
+  {
+    id: 'member-3',
+    name: '',
+    title: '',
+    education: '',
+    experience: '',
+    passion: '',
+    image: '',
   },
 ];
 

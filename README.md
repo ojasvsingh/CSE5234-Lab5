@@ -6,7 +6,7 @@ Lab 5 provides the shopping flow: choose products, edit a shopping bag, enter pa
 
 **You can run the entire project on your own computer. You do not need AWS, a database, or a backend for these labs.** Orders and support requests are demonstrations only: the website does not charge a card, ship products, or send messages.
 
-**Before submitting Lab 6:** Haotian Luo's photo and executive profile are included. The group still needs to add the other members' names, photos, executive titles, and backgrounds. Section 4 explains how to add them.
+**Before submitting Lab 6:** our group has three members. Haotian Luo's photo and executive profile are complete. Two blank profiles are ready for the other members to fill in themselves. Section 4 explains where to add their names, photos, executive titles, and backgrounds.
 
 ## 1. Get the website running
 
@@ -105,7 +105,7 @@ Lab 6 adds these pages and shared elements:
 | Page or requirement | What it does | Where to find it |
 | --- | --- | --- |
 | Home: `/` | Introduces the brand, highlights three products, and links to the collection and company story. | [Home.jsx](src/pages/Home.jsx) |
-| About Us: `/about` | Explains the mission, vision, and company strategy. Shows Haotian Luo's executive profile; the other members still need to be added. | [About.jsx](src/pages/About.jsx) |
+| About Us: `/about` | Explains the mission, vision, and company strategy. Shows three member cards: Haotian Luo's completed profile and two placeholders for the other members to fill in. | [About.jsx](src/pages/About.jsx) |
 | Contact Us: `/contact` | Explains who handles orders, returns, and product questions. Includes example support policies, FAQ, and a request preview form. | [Contact.jsx](src/pages/Contact.jsx) |
 | Consistent menu and footer | Gives every page the same navigation, shopping bag access, and company/support links. All four main menu links remain visible on a phone. | [Layout.jsx](src/components/Layout.jsx) |
 | CSS styling and optional input validation | Uses a consistent outdoor theme, adjusts layouts for small screens, and checks checkout and support input. | [site.css](src/site.css), [styles.css](src/styles.css) |
@@ -171,29 +171,32 @@ Prices are stored in **cents**. For example, `priceCents: 8900` means **$89.00**
 
 To try a small edit, open `src/data/products.js`, change a product description, and save the file while `npm run dev` is running. The browser should update automatically. Page files ending in `.jsx` contain JavaScript together with HTML-like markup that describes the screen.
 
-### Add your group's executive profiles
+### Fill in your executive profile
 
-Lab 6 asks for an image of **each actual team member**, their job title, and their education, experience, or passions. Haotian Luo's name and photo are included, with a fictional CTO role and biography written for this course project. The other members still need to be added.
+Lab 6 asks for an image of **each actual team member**, their job title, and their education, experience, or passions. Our three profile slots are already in place. Haotian Luo's name and photo are included, with a fictional CTO role and biography written for this course project. The `member-2` and `member-3` entries have empty fields for the other two members to complete.
 
-1. Put a member's photo in [public/images/team](public/images/team), for example `member-name.jpg`.
-2. Open [src/data/company.js](src/data/company.js) and find `export const teamMembers = [`.
-3. Keep Haotian's existing entry. Add a new `{ ... }` entry for each remaining member before the closing `];`, using the example below and text the member provides or approves.
+1. Choose either the `member-2` or `member-3` slot with your teammate, so you do not edit the same entry.
+2. Put your photo in [public/images/team](public/images/team), for example `your-name.jpg`.
+3. Open [src/data/company.js](src/data/company.js) and find your slot, such as `id: 'member-2'`.
+4. Replace that entry's empty strings (`''`) with your details. Keep the `id`, commas, and braces. Leave Haotian's entry and your teammate's slot unchanged.
+
+For example, fill in the `member-2` entry like this, replacing the sample text:
 
 ```js
 {
-  id: 'member-name',
-  name: 'Member name',
-  title: 'Member-chosen executive title',
-  education: 'Their degree or area of study',
-  experience: 'Their projects, work, or team responsibilities',
-  passion: 'Their interests inside or outside the classroom',
-  image: '/images/team/member-name.jpg',
+  id: 'member-2',
+  name: 'Your full name',
+  title: 'Your role in the fictional company',
+  education: 'Your degree or area of study',
+  experience: 'Your projects, work, or team responsibilities',
+  passion: 'Your interests inside or outside the classroom',
+  image: '/images/team/your-name.jpg',
 },
 ```
 
-For more people, add more `{ ... }` entries inside the same brackets, separated by commas. Each `id` should be different. The image path begins with `/images/`, not `/public/images/`. Save the file and check **About us**: the cards appear automatically, with one image and profile per entry.
+Edit your existing slot rather than adding a fourth entry. The image path begins with `/images/`, not `/public/images/`, and must match your photo's filename, including capitalization. Save the file and check **About us**: your text and photo replace the placeholders automatically. If your text contains an apostrophe, use double quotes around that value.
 
-If a photo is missing, the page shows a clearly labeled placeholder. Add the actual photo before submission. Members can choose executive titles and approve a biography for the fictional company, as Haotian has done. The page uses a side-by-side layout for one profile and a card grid when more people are added; both layouts adapt to phones.
+Empty entries appear as **Team member 2** and **Team member 3**, with a placeholder portrait and labels for the missing details. These labels are only temporary; each member should fill in their own name, photo, role, and introduction before submission. The three cards sit side by side on a computer and stack on a phone.
 
 ### Why information survives some actions but not others
 
