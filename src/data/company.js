@@ -18,9 +18,8 @@ export const company = {
   ],
 };
 
-// Our group has three members. Fill the two blank entries below in place.
-// Each member can keep their id and replace the empty strings with their details.
-// Haotian approved a fictional executive role and biography for this course project.
+// Our group has three members. 
+
 export const teamMembers = [
   {
     id: 'haotian-luo',
@@ -32,7 +31,7 @@ export const teamMembers = [
     image: '/images/team/haotian-luo.jpg',
   },
   {
-    id: 'member-2',
+    id: 'sai-chappidi',
     name: 'Sai Chappidi',
     title: 'Head of Platform',
     education: 'Pursuing a Bachelor of Science in Computer Science and Engineering with a focus on software engineering, web development, and security.',
@@ -41,13 +40,13 @@ export const teamMembers = [
     image: '/images/team/Sai_Chappidi.png',
   },
   {
-    id: 'member-3',
-    name: '',
-    title: '',
-    education: '',
-    experience: '',
-    passion: '',
-    image: '',
+    id: 'ojasv-singh',
+    name: 'Ojasv Singh',
+    title: 'Head of Operations and Design',
+    education: 'Bachelors in Computer Science, with experience in user-centered design, product development, and technology operations.',
+    experience: 'Leads operations and design for Adventure Beyond, coordinating the workflows behind the storefront, while shaping a clear, intuitive shopping experience from product browsing through checkout.',
+    passion: 'Exploring the outdoors, and connecting technology with people to promote more nature enthusiasts and outdoor adventurers.',
+    image: '/images/team/ojasv_singh.png',
   },
 ];
 

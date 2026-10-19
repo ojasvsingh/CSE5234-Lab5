@@ -6,7 +6,6 @@ Lab 5 provides the shopping flow: choose products, edit a shopping bag, enter pa
 
 **You can run the entire project on your own computer. You do not need AWS, a database, or a backend for these labs.** Orders and support requests are demonstrations only: the website does not charge a card, ship products, or send messages.
 
-**Before submitting Lab 6:** our group has three members. Haotian Luo's photo and executive profile are complete. Two blank profiles are ready for the other members to fill in themselves. Section 4 explains where to add their names, photos, executive titles, and backgrounds.
 
 ## 1. Get the website running
 
@@ -105,7 +104,7 @@ Lab 6 adds these pages and shared elements:
 | Page or requirement | What it does | Where to find it |
 | --- | --- | --- |
 | Home: `/` | Introduces the brand, highlights three products, and links to the collection and company story. | [Home.jsx](src/pages/Home.jsx) |
-| About Us: `/about` | Explains the mission, vision, and company strategy. Shows three member cards: Haotian Luo's completed profile and two placeholders for the other members to fill in. | [About.jsx](src/pages/About.jsx) |
+| About Us: `/about` | Explains the mission, vision, and company strategy. Shows three member cards of the three Executives. | [About.jsx](src/pages/About.jsx) |
 | Contact Us: `/contact` | Explains who handles orders, returns, and product questions. Includes example support policies, FAQ, and a request preview form. | [Contact.jsx](src/pages/Contact.jsx) |
 | Consistent menu and footer | Gives every page the same navigation, shopping bag access, and company/support links. All four main menu links remain visible on a phone. | [Layout.jsx](src/components/Layout.jsx) |
 | CSS styling and optional input validation | Uses a consistent outdoor theme, adjusts layouts for small screens, and checks checkout and support input. | [site.css](src/site.css), [styles.css](src/styles.css) |
@@ -171,32 +170,6 @@ Prices are stored in **cents**. For example, `priceCents: 8900` means **$89.00**
 
 To try a small edit, open `src/data/products.js`, change a product description, and save the file while `npm run dev` is running. The browser should update automatically. Page files ending in `.jsx` contain JavaScript together with HTML-like markup that describes the screen.
 
-### Fill in your executive profile
-
-Lab 6 asks for an image of **each actual team member**, their job title, and their education, experience, or passions. Our three profile slots are already in place. Haotian Luo's name and photo are included, with a fictional CTO role and biography written for this course project. The `member-2` and `member-3` entries have empty fields for the other two members to complete.
-
-1. Choose either the `member-2` or `member-3` slot with your teammate, so you do not edit the same entry.
-2. Put your photo in [public/images/team](public/images/team), for example `your-name.jpg`.
-3. Open [src/data/company.js](src/data/company.js) and find your slot, such as `id: 'member-2'`.
-4. Replace that entry's empty strings (`''`) with your details. Keep the `id`, commas, and braces. Leave Haotian's entry and your teammate's slot unchanged.
-
-For example, fill in the `member-2` entry like this, replacing the sample text:
-
-```js
-{
-  id: 'member-2',
-  name: 'Your full name',
-  title: 'Your role in the fictional company',
-  education: 'Your degree or area of study',
-  experience: 'Your projects, work, or team responsibilities',
-  passion: 'Your interests inside or outside the classroom',
-  image: '/images/team/your-name.jpg',
-},
-```
-
-Edit your existing slot rather than adding a fourth entry. The image path begins with `/images/`, not `/public/images/`, and must match your photo's filename, including capitalization. Save the file and check **About us**: your text and photo replace the placeholders automatically. If your text contains an apostrophe, use double quotes around that value.
-
-Empty entries appear as **Team member 2** and **Team member 3**, with a placeholder portrait and labels for the missing details. These labels are only temporary; each member should fill in their own name, photo, role, and introduction before submission. The three cards sit side by side on a computer and stack on a phone.
 
 ### Why information survives some actions but not others
 
@@ -235,7 +208,7 @@ npm run test:e2e
 
 The first command installs the test browser. You normally only need it once, or after updating Playwright. The second command builds the app, starts its own temporary server on port **4173**, and runs the tests. Keep that port free; you do not need to start a preview server yourself. The normal development server on port 5173 can stay running.
 
-The suite currently contains **12 unit tests and 28 browser tests**. A successful run reports that all tests passed. Browser checks cover checkout, the new pages, navigation, FAQ, support form validation and downloads, refresh behavior, and unavailable or damaged saved data. The phone tests simulate a phone-sized screen in Chromium; they are not tests on a physical phone. Passing tests does not replace adding the real team profiles before submission.
+The suite currently contains **12 unit tests and 28 browser tests**. A successful run reports that all tests passed. Browser checks cover checkout, the new pages, navigation, FAQ, support form validation and downloads, refresh behavior, and unavailable or damaged saved data. The phone tests simulate a phone-sized screen in Chromium; they are not tests on a physical phone.
 
 ### Optional: check the build for hosting
 
@@ -263,7 +236,6 @@ If a later assignment requires online hosting, the host must serve `index.html` 
 | The Place demo order button is disabled | Check the box confirming that you reviewed the details. Editing the bag requires checking it again. |
 | Browser tests cannot find a browser executable | Run `npx playwright install chromium`, then try `npm run test:e2e` again. |
 | Browser tests say port 4173 is in use | Stop any `npm run preview` process using that port, then rerun the tests. |
-| About Us says profiles are pending | Add the actual group members to `teamMembers` in `src/data/company.js`, as described in Section 4. |
 | A support request was not delivered | The support form deliberately creates a local preview only. Sending requests would require a real inbox and a backend in a later lab. |
 
 `npm start` also works; it is another name for `npm run dev` in this project. You do not need to run both.
