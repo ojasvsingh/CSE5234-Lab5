@@ -19,7 +19,7 @@ function ProductCard({ product, index, onAdded }) {
     setQuantity(1);
   }
   return (
-    <article className="product-card">
+    <article className="product-card" id={product.id}>
       <div className={`product-image product-image-${product.id}`}>
         <span className="product-index">0{index + 1} / {product.category.toUpperCase()}</span>
         <img src={product.image} alt={`${product.name} in ${product.color.toLowerCase()}`} width="400" height="400" />

@@ -7,6 +7,9 @@ import PaymentEntry from './pages/PaymentEntry.jsx';
 import ShippingEntry from './pages/ShippingEntry.jsx';
 import ViewOrder from './pages/ViewOrder.jsx';
 import Confirmation from './pages/Confirmation.jsx';
+import Home from './pages/Home.jsx';
+import About from './pages/About.jsx';
+import Contact from './pages/Contact.jsx';
 
 function CheckoutGuard({ stage, children }) {
   const { cart, payment, shipping, receipt } = useShop();
@@ -21,7 +24,9 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Navigate to="/purchase" replace />} />
+        <Route index element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/purchase" element={<Purchase />} />
         <Route path="/purchase/paymentEntry" element={<CheckoutGuard stage={1}><PaymentEntry /></CheckoutGuard>} />
         <Route path="/purchase/shippingEntry" element={<CheckoutGuard stage={2}><ShippingEntry /></CheckoutGuard>} />
