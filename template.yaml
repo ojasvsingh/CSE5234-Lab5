@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Adventure Beyond Lab 7 inventory and order microservices
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    CodeUri: services/
+    MemorySize: 128
+    Timeout: 10
+    Environment:
+      Variables:
+        ALLOWED_ORIGIN: '*'
+Resources:
+  InventoryApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: dev
+      Cors:
+        AllowOrigin: "'*'"
+        AllowMethods: "'GET,OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+  OrderApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: dev
+      Cors:
+        AllowOrigin: "'*'"
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+  InventoryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: inventory/handler.handler
+      Events:
+        ListInventory:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /inventory-management/inventory
+            Method: get
+        SearchItems:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /inventory-management/inventory/items
+            Method: get
+        ItemById:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /inventory-management/inventory/items/{id}
+            Method: get
+  OrderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: orders/handler.handler
+      Environment:
+        Variables:
+          INVENTORY_SERVICE_URL: !Sub https://${InventoryApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/dev
+      Events:
+        SubmitOrder:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrderApi
+            Path: /order-processing/order
+            Method: post
+Outputs:
+  InventoryApiUrl:
+    Description: Set VITE_INVENTORY_API_URL to this value
+    Value: !Sub https://${InventoryApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/dev
+  OrderApiUrl:
+    Description: Set VITE_ORDER_API_URL to this value
+    Value: !Sub https://${OrderApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/dev

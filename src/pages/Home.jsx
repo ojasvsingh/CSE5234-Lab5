@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
 import { FiArrowRight, FiArrowUpRight, FiCompass, FiMap, FiSun } from 'react-icons/fi';
-import { products } from '../data/products.js';
+import { useShop } from '../context/ShopContext.jsx';
+import InventoryStatus from '../components/InventoryStatus.jsx';
 import { formatMoney } from '../lib/shop.js';
 
-const featuredIds = ['ridge-daypack', 'summit-tent', 'camp-bottle'];
-
 export default function Home() {
-  const featured = products.filter((product) => featuredIds.includes(product.id));
+  const { products } = useShop();
+  const featured = products.filter((product) => product.featured);
 
   return (
     <>
@@ -19,7 +19,7 @@ export default function Home() {
             <Link className="button button-primary" to="/purchase">Explore the collection <FiArrowRight aria-hidden="true" /></Link>
             <Link className="inline-link" to="/about">Our story <FiArrowUpRight aria-hidden="true" /></Link>
           </div>
-          <div className="hero-note"><FiCompass className="home-compass" aria-hidden="true" /><span>FIVE ESSENTIALS.<br /><strong>YOUR OWN WAY OUT THERE.</strong></span></div>
+          <div className="hero-note"><FiCompass className="home-compass" aria-hidden="true" /><span>TRAIL ESSENTIALS.<br /><strong>YOUR OWN WAY OUT THERE.</strong></span></div>
         </div>
         <div className="hero-art">
           <img src="/images/landscape.svg" alt="A mountain campsite with pine trees, an orange tent, and a winding trail" width="720" height="520" />
@@ -40,8 +40,9 @@ export default function Home() {
       <section className="container home-collection" aria-labelledby="home-collection-title">
         <div className="section-heading">
           <div><p className="eyebrow">START WITH THE GOOD STUFF</p><h2 id="home-collection-title">A few favorites for the way out.</h2></div>
-          <Link className="inline-link" to="/purchase">Shop all five essentials <FiArrowRight aria-hidden="true" /></Link>
+          <Link className="inline-link" to="/purchase">Shop all essentials <FiArrowRight aria-hidden="true" /></Link>
         </div>
+        <InventoryStatus />
         <div className="featured-grid">
           {featured.map((product, index) => (
             <Link className="featured-product" to={`/purchase#${product.id}`} key={product.id}>

@@ -1,3 +1,4 @@
+// Lab 7 allows warehouse data here. Orders check stock without reserving it.
 export const products = [
   {
     id: 'ridge-daypack',
@@ -5,6 +6,8 @@ export const products = [
     category: 'Packs',
     description: 'Room for the essentials. Ready for the detour.',
     priceCents: 8900,
+    availableQuantity: 12,
+    featured: true,
     image: '/images/daypack.svg',
     color: 'Moss green',
     tag: 'THE EVERYDAY EXPLORER',
@@ -15,6 +18,8 @@ export const products = [
     category: 'Shelter',
     description: 'A little home, a long way from home.',
     priceCents: 18900,
+    availableQuantity: 8,
+    featured: true,
     image: '/images/tent.svg',
     color: 'Burnt orange',
     tag: 'ROOM FOR TWO',
@@ -25,6 +30,7 @@ export const products = [
     category: 'Apparel',
     description: 'Pack a layer. Chase a change in the weather.',
     priceCents: 12900,
+    availableQuantity: 20,
     image: '/images/jacket.svg',
     color: 'Sand · Unisex M',
     tag: 'THE EXTRA LAYER',
@@ -35,6 +41,7 @@ export const products = [
     category: 'Essentials',
     description: 'A steady companion for the ups and downs.',
     priceCents: 5900,
+    availableQuantity: 15,
     image: '/images/poles.svg',
     color: 'Graphite · Pair',
     tag: 'FIND YOUR FOOTING',
@@ -45,10 +52,11 @@ export const products = [
     category: 'Essentials',
     description: 'Take a sip. Take in the view.',
     priceCents: 2900,
+    availableQuantity: 30,
+    featured: true,
     image: '/images/bottle.svg',
     color: 'Ochre · 750 ml',
     tag: 'REFILL & ROAM',
   },
 ];
 
-export const productById = Object.fromEntries(products.map((product) => [product.id, product]));

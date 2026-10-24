@@ -18,7 +18,13 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['iPhone 13'], browserName: 'chromium' } },
   ],
   webServer: {
-    command: 'npm run build && npm run preview -- --host 127.0.0.1 --port 4173 --strictPort',
+    command: 'npm run build && npm run preview:all',
+    env: {
+      INVENTORY_PORT: '4311', ORDER_PORT: '4312', WEB_PORT: '4173',
+      INVENTORY_SERVICE_URL: 'http://127.0.0.1:4311',
+      ORDER_SERVICE_URL: 'http://127.0.0.1:4312',
+      VITE_INVENTORY_API_URL: '', VITE_ORDER_API_URL: '',
+    },
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: false,
     timeout: 30_000,

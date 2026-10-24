@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiArrowDown, FiArrowRight, FiArrowUpRight, FiCheck, FiPlus } from 'react-icons/fi';
-import { products } from '../data/products.js';
+import InventoryStatus from '../components/InventoryStatus.jsx';
 import { useShop } from '../context/ShopContext.jsx';
 import { formatMoney, MAX_QUANTITY } from '../lib/shop.js';
 import QuantityInput from '../components/QuantityInput.jsx';
 
 function ProductCard({ product, index, onAdded }) {
-  const { cart, addItem } = useShop();
+  const { cart, addItem, isSubmitting } = useShop();
   const [quantity, setQuantity] = useState(1);
   const inBag = cart.find((line) => line.productId === product.id)?.quantity || 0;
   const remaining = MAX_QUANTITY - inBag;
@@ -29,9 +29,10 @@ function ProductCard({ product, index, onAdded }) {
       <div className="product-title-row"><h3>{product.name}</h3><strong>{formatMoney(product.priceCents)}</strong></div>
       <p className="product-description">{product.description}</p>
       <p className="product-color"><span />{product.color}</p>
+      <p className="product-stock">{product.availableQuantity > 0 ? `${product.availableQuantity} available in the warehouse` : 'Currently out of stock'}</p>
       <div className="product-buy">
         <QuantityInput label={product.name} value={Math.min(quantity, Math.max(1, remaining))} max={Math.max(1, remaining)} onChange={setQuantity} />
-        <button type="button" className="add-button" aria-label={`Add ${product.name} to bag`} disabled={atLimit} onClick={add}>{atLimit ? 'Bag limit reached' : 'Add to bag'}<FiPlus aria-hidden="true" /></button>
+        <button type="button" className="add-button" aria-label={`Add ${product.name} to bag`} disabled={atLimit || isSubmitting || product.availableQuantity === 0} onClick={add}>{product.availableQuantity === 0 ? 'Out of stock' : atLimit ? 'Bag limit reached' : 'Add to bag'}<FiPlus aria-hidden="true" /></button>
       </div>
     </article>
   );
@@ -40,7 +41,8 @@ function ProductCard({ product, index, onAdded }) {
 export default function Purchase() {
   const [category, setCategory] = useState('All gear');
   const [notice, setNotice] = useState('');
-  const { totals, setCartOpen } = useShop();
+  const { products, inventoryLoading, inventoryError, totals, setCartOpen } = useShop();
+  const categories = ['All gear', ...new Set(products.map((product) => product.category))];
   const filtered = products.filter((product) => category === 'All gear' || product.category === category);
   return (
     <>
@@ -60,10 +62,11 @@ export default function Purchase() {
         </div>
       </section>
       <section className="container catalog" id="gear" aria-labelledby="gear-heading">
-        <div className="catalog-heading"><div><p className="eyebrow">A SMALL COLLECTION. A BIG OUTSIDE.</p><h2 id="gear-heading">Meet your trail companions.</h2></div><span className="collection-count">05 thoughtfully chosen essentials <FiArrowDown aria-hidden="true" /></span></div>
+        <div className="catalog-heading"><div><p className="eyebrow">A SMALL COLLECTION. A BIG OUTSIDE.</p><h2 id="gear-heading">Meet your trail companions.</h2></div><span className="collection-count">{products.length} thoughtfully chosen essentials <FiArrowDown aria-hidden="true" /></span></div>
+        <InventoryStatus />
         <div className="catalog-toolbar">
           <div className="category-filters" role="group" aria-label="Filter gear by category">
-            {['All gear', 'Packs', 'Shelter', 'Apparel', 'Essentials'].map((name) => <button key={name} type="button" aria-pressed={category === name} className={category === name ? 'selected' : ''} onClick={() => setCategory(name)}>{name}{name === 'All gear' && <span>5</span>}</button>)}
+            {categories.map((name) => <button key={name} type="button" aria-pressed={category === name} className={category === name ? 'selected' : ''} onClick={() => setCategory(name)}>{name}{name === 'All gear' && <span>{products.length}</span>}</button>)}
           </div>
           <span className="result-count">{filtered.length} {filtered.length === 1 ? 'essential' : 'essentials'}</span>
         </div>
@@ -71,11 +74,12 @@ export default function Purchase() {
         <div className="product-grid">
           {filtered.map((product) => <ProductCard key={product.id} product={product} index={products.indexOf(product)} onAdded={setNotice} />)}
         </div>
+        {!inventoryLoading && !inventoryError && !filtered.length && <p className="service-message">No gear is available in this collection right now.</p>}
         {totals.itemCount > 0 && <div className="catalog-checkout"><span><strong>{totals.itemCount} {totals.itemCount === 1 ? 'essential' : 'essentials'}</strong> packed for your next chapter.</span><Link className="button button-primary" to="/purchase/paymentEntry">Let’s get going · {formatMoney(totals.totalCents)} <FiArrowRight aria-hidden="true" /></Link></div>}
       </section>
       <section className="journey-band" id="how-it-works" aria-labelledby="journey-heading"><div className="container journey-inner">
         <div><p className="eyebrow">FROM YOUR BAG TO THE TRAIL</p><h2 id="journey-heading">Keep it simple.<br />Get out there.</h2></div>
-        <div className="journey-step"><span>01</span><h3>Find your essentials</h3><p>Five trail companions. Choose your gear and make room in your bag.</p></div>
+        <div className="journey-step"><span>01</span><h3>Find your essentials</h3><p>Choose your trail companions and make room in your bag.</p></div>
         <div className="journey-step"><span>02</span><h3>Make it yours</h3><p>Add your payment and shipping details, then give your order a final look.</p></div>
         <div className="journey-step"><span>03</span><h3>See you out there</h3><p>Confirm your demo order and get your adventure’s confirmation number.</p></div>
       </div></section>

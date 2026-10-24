@@ -398,3 +398,9 @@ html { scroll-behavior: smooth; scroll-padding-top: 30px; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; }
 }
+/* Service feedback stays in the shopping flow, with a retry or correction action. */
+.service-message { margin: 20px 0; padding: 20px; background: #f0f1e8; border-radius: 4px; font-size: 14px; line-height: 1.7; }
+.service-error { background: #fff0e9; color: #813b27; }
+.service-message .text-button { margin-top: 10px; }
+.service-message ul { padding-left: 20px; margin-block: 10px; }
+.product-stock { font-size: 11px; color: var(--muted); margin-top: 8px; }
