@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom';
 import { FiArrowRight, FiCheck, FiCompass } from 'react-icons/fi';
 import { useShop } from '../context/ShopContext.jsx';
-import { getCartItems, getTotals, formatMoney } from '../lib/shop.js';
+import { formatMoney } from '../lib/shop.js';
 
 export default function Confirmation() {
   const { receipt } = useShop();
-  const items = getCartItems(receipt.cart);
-  const totals = getTotals(receipt.cart);
+  const { items, totals } = receipt;
   return (
     <div className="container confirmation-page">
       <div className="confirmation-symbol"><FiCheck aria-hidden="true" /></div>

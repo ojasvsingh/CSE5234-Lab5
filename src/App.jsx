@@ -10,10 +10,12 @@ import Confirmation from './pages/Confirmation.jsx';
 import Home from './pages/Home.jsx';
 import About from './pages/About.jsx';
 import Contact from './pages/Contact.jsx';
+import InventoryStatus from './components/InventoryStatus.jsx';
 
 function CheckoutGuard({ stage, children }) {
-  const { cart, payment, shipping, receipt } = useShop();
+  const { cart, payment, shipping, receipt, inventoryLoading, inventoryError } = useShop();
   if (stage === 'confirmation') return receipt ? children : <Navigate to="/purchase" replace />;
+  if (inventoryLoading || inventoryError) return <div className="container"><InventoryStatus /></div>;
   if (!cart.length) return <Navigate to="/purchase" replace />;
   if (stage > 1 && Object.keys(validatePayment(payment)).length) return <Navigate to="/purchase/paymentEntry" replace />;
   if (stage > 2 && Object.keys(validateShipping(shipping)).length) return <Navigate to="/purchase/shippingEntry" replace />;

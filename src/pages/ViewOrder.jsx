@@ -7,20 +7,31 @@ import { cardLastFour } from '../lib/validation.js';
 import { formatMoney } from '../lib/shop.js';
 
 export default function ViewOrder() {
-  const { cart, payment, shipping, totals, submitOrder } = useShop();
+  const { cart, items, payment, shipping, totals, submitOrder, completeOrder, isSubmitting, updateQuantity } = useShop();
   const [confirmedCart, setConfirmedCart] = useState(null);
-  const cartSignature = JSON.stringify(cart);
+  const [orderError, setOrderError] = useState(null);
+  const cartSignature = JSON.stringify({ cart, prices: items.map((item) => item.priceCents) });
   const confirmed = confirmedCart === cartSignature;
   const navigate = useNavigate();
-  function placeOrder(event) {
+  async function placeOrder(event) {
     event.preventDefault();
-    if (!confirmed) return;
-    // Commit the receipt, clear checkout data, and navigate in the same transition.
-    // Otherwise the empty-cart guard can run before the router changes pages.
-    startTransition(() => {
-      submitOrder();
-      navigate('/purchase/viewConfirmation', { replace: true });
-    });
+    if (!confirmed || isSubmitting) return;
+    setOrderError(null);
+    try {
+      const receipt = await submitOrder();
+      if (!receipt) return;
+      startTransition(() => {
+        completeOrder(receipt);
+        navigate('/purchase/viewConfirmation', { replace: true });
+      });
+    } catch (error) {
+      setOrderError(error);
+    }
+  }
+  function useAvailableQuantities() {
+    for (const item of orderError.items) updateQuantity(item.productId, item.availableQuantity);
+    setConfirmedCart(null);
+    setOrderError(null);
   }
   return (
     <CheckoutLayout step={3} eyebrow="ONE LAST LOOK" title="Ready when you are." description="Your bag is packed. Check the details below before you make it official.">
@@ -33,8 +44,16 @@ export default function ViewOrder() {
         <address>{shipping.name}<br />{shipping.addressLine1}<br />{shipping.addressLine2 && <>{shipping.addressLine2}<br /></>}{shipping.city}, {shipping.state} {shipping.zip}<br />United States</address>
       </div>
       <form className="place-order-form" onSubmit={placeOrder}>
-        <label className="confirmation-checkbox"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmedCart(event.target.checked ? cartSignature : null)} required /><span>I’ve checked my items, payment, and shipping details.</span></label>
-        <button type="submit" className="button button-primary full-width" disabled={!confirmed}>Place demo order · {formatMoney(totals.totalCents)} <FiArrowRight aria-hidden="true" /></button>
+        {orderError && <div className="service-message service-error" role="alert">
+          <p>{orderError.message}</p>
+          {orderError.code === 'INSUFFICIENT_STOCK' && <>
+            <ul>{orderError.items.map((item) => <li key={item.productId}>{item.name}: requested {item.requestedQuantity}, available {item.availableQuantity}.</li>)}</ul>
+            <button type="button" className="text-button" onClick={useAvailableQuantities}>Use available quantities</button>
+          </>}
+          {orderError.fields && <p>Use “Edit payment” or “Edit shipping” above to correct the details.</p>}
+        </div>}
+        <label className="confirmation-checkbox"><input type="checkbox" checked={confirmed} disabled={isSubmitting} onChange={(event) => setConfirmedCart(event.target.checked ? cartSignature : null)} required /><span>I’ve checked my items, payment, and shipping details.</span></label>
+        <button type="submit" className="button button-primary full-width" disabled={!confirmed || isSubmitting}>{isSubmitting ? 'Checking stock and placing order…' : <>Place demo order · {formatMoney(totals.totalCents)} <FiArrowRight aria-hidden="true" /></>}</button>
         <p className="form-footnote centered"><FiCheck aria-hidden="true" />This is a demo order. You won’t be charged.</p>
       </form>
     </CheckoutLayout>

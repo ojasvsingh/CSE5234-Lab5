@@ -3,17 +3,23 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Adventure Beyond storefront and company website for CSE 5234 Labs 5 and 6",
+  "description": "Adventure Beyond storefront with inventory and order microservices for CSE 5234 Labs 5–7",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "dev": "vite",
-    "start": "vite",
+    "dev": "node scripts/dev.mjs",
+    "start": "node scripts/dev.mjs",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test tests/unit/*.test.js",
-    "test:e2e": "playwright test"
+    "test": "node --test tests/unit/*.test.js tests/api/*.test.js",
+    "test:e2e": "playwright test",
+    "dev:frontend": "vite",
+    "dev:services": "node scripts/dev.mjs --services-only",
+    "start:inventory": "node services/inventory/server.js",
+    "start:orders": "node services/orders/server.js",
+    "preview:all": "node scripts/dev.mjs --preview",
+    "test:api": "node --test tests/api/*.test.js"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.3.0",
