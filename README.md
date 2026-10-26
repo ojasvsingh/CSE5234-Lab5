@@ -1,241 +1,229 @@
 # Adventure Beyond
 
-**Adventure Beyond** is our outdoor gear shopping website for **CSE 5234 Labs 5 and 6**.
+Adventure Beyond is our three-person group's outdoor gear store for **CSE 5234 Labs 5, 6, and 7**.
 
-Lab 5 provides the shopping flow: choose products, edit a shopping bag, enter payment and shipping information, check the order, and see a confirmation number. Lab 6 adds a home page, company information, an executive profile section, and customer support pages, with the same navigation and footer throughout the website.
+Lab 5 added shopping and checkout. Lab 6 added the Home, About Us, and Contact Us pages. **Lab 7 adds two backend microservices:** one provides inventory and one checks orders. Products, prices, stock quantities, and confirmation numbers now come from these services.
 
-**You can run the entire project on your own computer. You do not need AWS, a database, or a backend for these labs.** Orders and support requests are demonstrations only: the website does not charge a card, ship products, or send messages.
+You can run everything locally with one command after installation. AWS Lambda and API Gateway deployment files are also included. This is a classroom demo: it does not charge cards, ship products, or deliver support messages. Use sample payment and address details.
 
+## 1. Download and run
 
-## 1. Get the website running
-
-### Before you start
-
-You need:
-
-- **Node.js 22.12 or later**. Node.js lets us run the development tools. It also includes **npm**, which installs the project's libraries. Node 20.19+ is also supported.
-- **Git**, if you use the download command below.
-- A web browser and a terminal, such as Terminal on macOS, PowerShell on Windows, or the terminal inside VS Code.
-
-Check that Node.js and npm are installed:
+You need Node.js **22.12 or later** (20.19+ also works), npm, and Git. Check your installation:
 
 ```sh
 node --version
 npm --version
 ```
 
-Both commands should print version numbers. If a command is not found, install Node.js and reopen your terminal before continuing.
-
-### Download this version of the project
-
-The work for both labs is on the `ht-lab5` branch in our group repository, `ojasvsingh/CSE5234-Lab5`. Select this branch to get the Lab 6 additions. A pull request lets the group review changes before merging them into `main`.
-
-For a fresh copy, run these commands one line at a time:
+For a fresh download:
 
 ```sh
 git clone --branch ht-lab5 --single-branch https://github.com/ojasvsingh/CSE5234-Lab5.git adventure-beyond
 cd adventure-beyond
-```
-
-The first command downloads the correct branch into a new folder called `adventure-beyond`. The second enters that folder. If you already have this version downloaded, open its folder instead. **The folder should contain `package.json` and this README.**
-
-You can also select that branch on GitHub and use **Code → Download ZIP**, then extract the ZIP and open a terminal in the extracted folder.
-
-### Install and start
-
-From the project folder, run:
-
-```sh
 npm ci
 npm run dev
 ```
 
-- `npm ci` installs the library versions recorded in `package-lock.json`. Run it the first time you download the project, or after pulling a change to the dependencies.
-- `npm run dev` starts the website on your computer. **Leave this terminal running while you use the website.**
+If you already have the project, open its folder and update it:
 
-The terminal should display a local address similar to:
-
-```text
-Local: http://localhost:5173/
+```sh
+git switch ht-lab5
+git pull --ff-only origin ht-lab5
+npm ci
+npm run dev
 ```
 
-Open **http://localhost:5173/** in your browser. You should see the Adventure Beyond home page, a mountain illustration, and links to **Home**, **Shop gear**, **About us**, and **Contact us**. Click **Shop gear** to see all five products at `/purchase`.
+Save or commit your own changes before pulling. If Git reports a conflict, resolve it with the group rather than discarding anyone's work.
 
-If the terminal prints a different port, such as `5174`, use that address instead. To stop the website, press **Ctrl+C** in the terminal. Next time, open the project folder and run `npm run dev` again. You do not need to reinstall everything each time.
+Open **http://127.0.0.1:5173/**. Keep the terminal running. Press **Ctrl+C** to stop all three processes.
 
-## 2. Try a complete order
+| Process | Local address | Purpose |
+| --- | --- | --- |
+| React website | `http://127.0.0.1:5173` | The pages you see and interact with |
+| Inventory service | `http://127.0.0.1:3001` | Product descriptions, prices, and warehouse quantities |
+| Order service | `http://127.0.0.1:3002` | Validates orders, calls inventory, and creates confirmations |
 
-Click **Shop gear** in the main menu, then follow this example to check that the main flow works:
+`npm ci` installs the versions recorded in the lockfile. `npm run dev` starts all three processes. No AWS credentials, database, `.env` file, or extra backend packages are needed for local use. `npm start` does the same thing as `npm run dev`.
 
-1. Set the **Ridge 28L Daypack** quantity to **2**, then click **Add to bag**.
-2. Add **1 Camp Insulated Bottle**.
-3. Open the shopping bag in the top-right corner. It should contain **3 items** with a total of **$207.00**: `2 × $89.00 + 1 × $29.00`.
-4. Try changing a quantity or removing a product. The total should update. Restore the two daypacks and one bottle, then click **Continue to payment**.
-5. Enter the sample payment details below, then click **Continue to shipping**.
-6. Enter the sample shipping details below, then click **Review your order**.
-7. Check the items, total, payment details, and address. The payment section shows only the last four card digits. You can edit your payment, address, or shopping bag here.
-8. Check **I've checked my items, payment, and shipping details**, then click **Place demo order**. If you change the bag after checking the box, you need to check it again.
-9. You should see **Adventure, confirmed.**, a number such as `AB-1234ABCD`, and your order summary. The shopping bag should now be empty.
+## 2. Understand the Lab 7 flow
 
-Use these **sample details**, not a real card:
+1. The browser requests the inventory from the inventory service.
+2. The website displays the returned products and prices. The cart keeps product IDs and quantities.
+3. On the review page, **Place demo order** sends the items, payment details, and shipping details to the order service as JSON.
+4. The order service validates the request and makes an **HTTP request to the inventory service** to check stock and obtain prices.
+5. Enough stock: the order service returns a confirmation number and receipt. Not enough stock: it returns a `409` error identifying the available quantities.
+6. The browser clears checkout details only after a successful response. On failure, it keeps the bag and form values so you can correct or retry the order.
 
-| Payment field | What to enter |
+An **API** is a way for programs to exchange requests and responses. **JSON** is the text format used for those responses. A **microservice** is a separate backend program with one responsibility. Here the two services run independently and communicate over HTTP; the order service does not import the inventory's product file.
+
+| Required API | What it returns |
+| --- | --- |
+| `GET /inventory-management/inventory` | All inventory items |
+| `GET /inventory-management/inventory/items/{id}` | One item with the given ID |
+| `GET /inventory-management/inventory/items?name=itemName` | Items whose names contain the search text |
+| `POST /order-processing/order` | A confirmation and receipt, or a validation/stock/service error |
+
+Name searches ignore capitalization. You can combine `id` and `name` query parameters. Full request examples and error formats are in [docs/API.md](docs/API.md).
+
+The inventory file is hardcoded **inside the inventory service**, as Lab 7 allows. There is no product list or confirmation generator in the frontend. The frontend still handles presentation tasks such as input feedback, category filtering, and displaying cart subtotals. The order service independently validates the submitted data and calculates the authoritative total.
+
+This lab **checks stock without reserving or decrementing it**. Repeated demo orders see the same warehouse quantities. Orders and personal details are not stored in a database. Stock updates, durable orders, real payments, and fulfillment are outside this implementation.
+
+## 3. Demonstrate a successful order
+
+1. Click **Shop gear**. Add **2 Ridge 28L Daypacks** and **1 Camp Insulated Bottle**.
+2. Open the bag. With the included inventory, the total should be **$207.00** (`2 × $89 + $29`).
+3. Try changing a quantity or removing an item, then restore those quantities.
+4. Click **Continue to payment** and enter the sample payment details below.
+5. Continue to shipping and enter the sample address.
+6. Review the order. Try **Edit payment**, **Edit shipping**, or **Edit your bag**.
+7. Check the review checkbox and click **Place demo order**. The button displays a pending state while the service checks stock.
+8. The confirmation page should show an `AB-XXXXXXXX` number returned by the backend, two receipt lines, and a total of **$207.00**. The bag should be empty.
+9. Refresh: the receipt still appears. It retains the prices returned when the order was confirmed.
+
+| Payment field | Sample value |
 | --- | --- |
 | Cardholder name | Alex Taylor |
 | Card number | 4242 4242 4242 4242 |
-| Expiration date | 12/30, or another future date in MM/YY format |
-| Security code (CVV) | 123 |
+| Expiration date | 12/35, or another future date in MM/YY format |
+| CVV | 123 |
 
-| Shipping field | What to enter |
+| Shipping field | Sample value |
 | --- | --- |
 | Full name | Alex Taylor |
 | Address line 1 | 123 Trailhead Lane |
-| Address line 2 | Leave blank, or enter Apt 5 |
+| Address line 2 | Leave blank, or use Apt 5 |
 | City | Columbus |
 | State | Ohio |
 | ZIP code | 43210 |
 
-This demo accepts US shipping addresses. It checks required fields, the card number's format, the expiration date, the CVV's format, and the ZIP code's format. It does **not** contact a bank or check whether an address exists. The total includes only the products; shipping and tax are not charged.
+The demo accepts US addresses and charges no shipping or tax. Payment and address validation checks the input's format; it does not contact a bank or verify a street address.
 
-## 3. How the pages match the assignment
+### Demonstrate insufficient stock
 
-Lab 6 adds these pages and shared elements:
+The sample warehouse contains **12 daypacks**. Add **13 daypacks**, complete checkout, and submit:
 
-| Page or requirement | What it does | Where to find it |
+- The order service returns `409 INSUFFICIENT_STOCK`, with `requestedQuantity: 13` and `availableQuantity: 12`.
+- The review page keeps the order and shows the shortage.
+- Click **Use available quantities** to reduce the bag to 12. Review and check the checkbox again, then submit successfully. An available quantity of zero removes that item from the bag.
+
+The cart allows 1–99 of a product so the shortage flow can be demonstrated. The warehouse quantity, which is shown on each product card, is checked again by the order service.
+
+### Verify service failures
+
+For an explicit failure demonstration, use three terminals instead of `npm run dev`:
+
+```sh
+npm run start:inventory
+```
+
+```sh
+npm run start:orders
+```
+
+```sh
+npm run dev:frontend
+```
+
+Stop the inventory terminal after reaching order review, then submit. You should see a stock-check failure, with no confirmation and no lost form data. Restart inventory and retry. If inventory is down when you first open the shop, the page offers **Try loading gear again**.
+
+## 4. Lab 5 and Lab 6 pages
+
+| Page | Address | Purpose |
 | --- | --- | --- |
-| Home: `/` | Introduces the brand, highlights three products, and links to the collection and company story. | [Home.jsx](src/pages/Home.jsx) |
-| About Us: `/about` | Explains the mission, vision, and company strategy. Shows three member cards of the three Executives. | [About.jsx](src/pages/About.jsx) |
-| Contact Us: `/contact` | Explains who handles orders, returns, and product questions. Includes example support policies, FAQ, and a request preview form. | [Contact.jsx](src/pages/Contact.jsx) |
-| Consistent menu and footer | Gives every page the same navigation, shopping bag access, and company/support links. All four main menu links remain visible on a phone. | [Layout.jsx](src/components/Layout.jsx) |
-| CSS styling and optional input validation | Uses a consistent outdoor theme, adjusts layouts for small screens, and checks checkout and support input. | [site.css](src/site.css), [styles.css](src/styles.css) |
+| Home | `/` | Brand introduction and API-provided featured products |
+| About Us | `/about` | Mission, vision, strategy, and all three executive profiles |
+| Contact Us | `/contact` | Support topics, example return policies, FAQ, and request preview |
+| Shop | `/purchase` | API-provided products, quantity controls, and cart |
+| Payment | `/purchase/paymentEntry` | Payment entry and format checks |
+| Shipping | `/purchase/shippingEntry` | Shipping address entry and checks |
+| Review | `/purchase/viewOrder` | Review details and submit to the order service |
+| Confirmation | `/purchase/viewConfirmation` | Backend confirmation number and receipt |
 
-The Lab 5 shopping flow is still available:
+Every page uses the shared navigation, footer, and shopping bag. Layouts adapt to phones. Opening a checkout page before completing its prerequisites sends you back to the appropriate step.
 
-**Choose gear → Payment → Shipping → Review order → Confirmation**
+On Contact Us, try choosing a return topic, submitting an empty form, previewing a filled request, downloading it, and opening FAQ answers. **Support requests are local previews only.** The `.example` email address is not monitored.
 
-A *route* is the part of the website address that selects a page. For example, `/purchase/paymentEntry` opens the payment page.
+## 5. Find the code you need
 
-| Page and route | What it does | Page file |
-| --- | --- | --- |
-| Shop: `/purchase` | Shows five products with pictures, prices, quantity inputs, and Add to bag buttons. | [Purchase.jsx](src/pages/Purchase.jsx) |
-| Payment: `/purchase/paymentEntry` | Collects cardholder name, card number, expiration date, and CVV. | [PaymentEntry.jsx](src/pages/PaymentEntry.jsx) |
-| Shipping: `/purchase/shippingEntry` | Collects the recipient's name, two address lines, city, state, and ZIP code. Address line 2 is optional. | [ShippingEntry.jsx](src/pages/ShippingEntry.jsx) |
-| Review: `/purchase/viewOrder` | Shows the items and total, payment details, and shipping address. Lets the customer edit and confirm the order. | [ViewOrder.jsx](src/pages/ViewOrder.jsx) |
-| Confirmation: `/purchase/viewConfirmation` | Thanks the customer and shows a confirmation number and order summary. | [Confirmation.jsx](src/pages/Confirmation.jsx) |
-
-The shopping bag is available on every page. It supports quantities from **1 to 99** per product. Use **Remove** to delete an item. Product information is written directly in the project, which is allowed for this lab. Each demo order gets a confirmation number generated in the browser.
-
-Start at the shop when demonstrating the project. Opening a later checkout page without completing the earlier steps sends you back to the step you still need to fill in. An empty bag sends you back to the shop.
-
-### Try the Lab 6 pages
-
-1. Open **Home**, then follow a featured product to its card in **Shop gear**.
-2. Open **About us** and find the mission, vision, strategy, and **Meet our executives** sections.
-3. Open **Contact us**. Choose **Get help with a return**; the form should select **Returns & exchanges**.
-4. Try previewing an empty request. Fill in the fields using sample details, such as `Alex Taylor`, `alex@example.com`, and a description of the problem. The order number is optional.
-5. Click **Preview support request**. Check the selected team and details, then use **Download preview** to save a text copy. Nothing is sent to a server.
-6. Open a FAQ answer. Try the footer links to returns and FAQ, and make the browser narrower to check the mobile layout.
-
-The `.example` support email address is an intentional placeholder, not a monitored inbox. The return policies are sample content for our fictional company. Contact details entered in the form stay in memory and clear when you leave or refresh that page. Editing the form removes the old preview so you do not download outdated information.
-
-## 4. Understand and change the code
-
-### What the main tools do
-
-- **React** builds the screen from reusable pieces called *components*. For example, the shopping bag is one component that every page can use.
-- **Vite** starts the local development server and prepares the website files for hosting. We use it instead of Create React App, following the TA's updated instructions.
-- **React Router** chooses which page to display when the address changes. This project uses version 7 with the basic routing APIs also shown in the lab's version 6 examples.
-- **React Context** gives the pages one shared place to read and update the cart, payment information, and shipping information.
-
-### Which file should I open?
-
-| If you want to… | Start here |
+| Change or understand | File |
 | --- | --- |
-| Change product names, descriptions, or prices | [src/data/products.js](src/data/products.js) |
-| Change a product's picture | [public/images](public/images), then update its image path in `products.js` if needed |
-| Change colors, spacing, fonts, or mobile layout | [src/styles.css](src/styles.css) |
-| Change Home, About Us, or Contact Us layouts | [src/site.css](src/site.css) and the matching file in [src/pages](src/pages) |
-| Change the mission, vision, strategy, or team profiles | [src/data/company.js](src/data/company.js) |
-| Change support teams, sample policies, or FAQ answers | [src/data/company.js](src/data/company.js) |
-| Change support form rules or the downloaded preview | [src/lib/support.js](src/lib/support.js) |
-| Change the header, navigation, or footer | [src/components/Layout.jsx](src/components/Layout.jsx) |
-| Change the shopping bag's layout or buttons | [src/components/CartDrawer.jsx](src/components/CartDrawer.jsx) |
-| Change the order summary shown beside checkout | [src/components/OrderSummary.jsx](src/components/OrderSummary.jsx) |
-| Understand how pages share information | [src/context/ShopContext.jsx](src/context/ShopContext.jsx) |
-| Change input validation rules | [src/lib/validation.js](src/lib/validation.js) |
-| Understand quantity changes, totals, or saved cart data | [src/lib/shop.js](src/lib/shop.js) |
-| Change routes or rules for entering checkout pages | [src/App.jsx](src/App.jsx) |
+| Products, prices, stock, featured flags | [services/inventory/catalogue.js](services/inventory/catalogue.js) |
+| Inventory GET endpoints | [services/inventory/handler.js](services/inventory/handler.js) |
+| Order validation, stock checks, confirmation numbers | [services/orders/handler.js](services/orders/handler.js) |
+| Shared payment/address format checks | [services/shared/validation.js](services/shared/validation.js) |
+| Local HTTP server / Lambda event adapter | [services/shared/http.js](services/shared/http.js), [services/shared/lambda.js](services/shared/lambda.js) |
+| Browser requests to the two services | [src/lib/api.js](src/lib/api.js) |
+| Cart, inventory loading, and checkout state | [src/context/ShopContext.jsx](src/context/ShopContext.jsx) |
+| Cart display totals and receipt storage | [src/lib/shop.js](src/lib/shop.js) |
+| Pages | [src/pages](src/pages) |
+| Company text, three member profiles, and support content | [src/data/company.js](src/data/company.js) |
+| Photos and illustrations | [public/images](public/images) |
+| Shared menu and footer | [src/components/Layout.jsx](src/components/Layout.jsx) |
+| Colors, spacing, and phone layouts | [src/styles.css](src/styles.css), [src/site.css](src/site.css) |
+| Start all services together | [scripts/dev.mjs](scripts/dev.mjs) |
+| AWS resources | [template.yaml](template.yaml) |
 
-Prices are stored in **cents**. For example, `priceCents: 8900` means **$89.00**. Using whole-number cents keeps price calculations exact.
+To edit a product, change `services/inventory/catalogue.js`, restart the inventory service (or restart `npm run dev`), and refresh the browser. Do not add product data back into React. Prices are whole-number **cents**: `8900` means `$89.00`.
 
-To try a small edit, open `src/data/products.js`, change a product description, and save the file while `npm run dev` is running. The browser should update automatically. Page files ending in `.jsx` contain JavaScript together with HTML-like markup that describes the screen.
+Team profiles are already supplied by Haotian Luo, Ojasv Singh, and Sai Chappidi. Each member can edit their entry in `src/data/company.js`; photos are in `public/images/team`. Preserve your teammates' entries when editing.
 
+### What survives a refresh?
 
-### Why information survives some actions but not others
-
-The current information used by React is called *state*. Context shares that state between the pages, so pressing Back or using the edit links does not discard the form values.
-
-A full browser refresh restarts the app. We save only the cart and the latest order receipt in **sessionStorage**, the browser's storage for the current tab. Payment details and shipping addresses stay in memory and are never written to that storage or sent to a server.
-
-| Action | Expected result |
+| Information | Where it lives |
 | --- | --- |
-| Move between pages or use the edit links | Your current cart and form values remain available. |
-| Refresh during checkout | The cart remains, but payment and shipping details are cleared. Enter them again, starting at payment. |
-| Place an order | A receipt is created. The cart, payment details, and shipping details are cleared. |
-| Refresh the confirmation page | The latest receipt still appears in the same tab. |
-| Use a browser that blocks session storage | The flow still works until refresh, but the cart and receipt cannot be restored afterward. |
+| Cart IDs and quantities | Current tab's `sessionStorage` |
+| Latest confirmation and receipt items/totals | Current tab's `sessionStorage` |
+| Payment and shipping details | Browser memory until successful submission or refresh |
+| Inventory | Inventory service's sample catalogue |
 
-Images and fonts are included with the project, so the running app does not depend on an external image or font service. The SVG illustrations are original; the Fontsource packages include the font licenses.
+Submitting an order sends payment and shipping details to the order service because Lab 7 requires them in the request. The service validates them without storing, logging, or returning them. A receipt contains only the confirmation number and purchased items/totals. Contact form details are not sent anywhere. Storage-disabled browsers still support checkout until refresh.
 
-## 5. Check your changes
-
-After an edit, run through the sample order in Section 2. Also try submitting an empty form and removing every item from the bag. The app should show helpful messages or return to the shop, rather than crash.
-
-There are two types of automated checks. Run them in a **second terminal opened in the project folder**:
-
-**Unit tests** check individual pieces of logic, such as totals and form validation. They do not open a browser.
+## 6. Run the checks
 
 ```sh
 npm test
 ```
 
-**Browser tests** click through the website automatically, using desktop and phone screen sizes. These are also called *end-to-end tests*, abbreviated `e2e`.
+This runs the unit and API integration tests. API tests start temporary local servers, check real HTTP communication between services, and shut them down automatically.
 
 ```sh
 npx playwright install chromium
 npm run test:e2e
 ```
 
-The first command installs the test browser. You normally only need it once, or after updating Playwright. The second command builds the app, starts its own temporary server on port **4173**, and runs the tests. Keep that port free; you do not need to start a preview server yourself. The normal development server on port 5173 can stay running.
+Install the test browser once, then run the browser tests. They build the frontend and start temporary servers on ports **4173, 4311, and 4312**. Keep those ports free. Your usual development servers can remain running.
 
-The suite currently contains **12 unit tests and 28 browser tests**. A successful run reports that all tests passed. Browser checks cover checkout, the new pages, navigation, FAQ, support form validation and downloads, refresh behavior, and unavailable or damaged saved data. The phone tests simulate a phone-sized screen in Chromium; they are not tests on a physical phone.
+The suite contains **12 unit tests, 9 API tests, and 36 browser tests**. It covers successful checkout, missing stock, service failures, retry, duplicate clicks, dynamic API products, receipt snapshots, company pages, and the existing support flows. Browser tests use desktop and phone screen sizes in Chromium.
 
-### Optional: check the build for hosting
-
-You do not need this step just to work on the lab locally.
+To inspect a production build locally:
 
 ```sh
 npm run build
-npm run preview
+npm run preview:all
 ```
 
-`build` creates a folder called `dist` containing the website files. `preview` lets you check those files locally, normally at **http://localhost:4173/**. Neither command uploads anything to AWS or publishes the site. Stop preview with **Ctrl+C** before running the browser tests.
+This starts the built website on port 4173 with both services. Stop any development services on ports 3001/3002 first. Neither command deploys to AWS.
 
-If a later assignment requires online hosting, the host must serve `index.html` for the application's routes. The local Vite servers already handle this.
+## 7. AWS deployment
 
-## 6. Common problems
+The assignment includes a Lambda/API Gateway walkthrough. This project provides the same four endpoint paths with **two Lambda functions and two REST APIs**, using Node.js as the allowed alternative stack. [docs/AWS.md](docs/AWS.md) explains deployment, environment variables, testing, and cleanup. The frontend can call AWS APIs while still running locally.
 
-| What you see | What to do |
+For public frontend hosting, the static host must serve `index.html` for client-side routes. Vite's local servers already do this.
+
+## 8. Common problems
+
+| Problem | What to do |
 | --- | --- |
-| `node` or `npm` is not recognized | Install a supported Node.js version, then close and reopen your terminal. |
-| An error saying `package.json` cannot be found | Your terminal is in the wrong folder. Enter the downloaded project folder before running npm commands. |
-| A React logo or missing Lab 6 pages | Check that you downloaded the `ht-lab5` branch described in Section 1. The `main` branch may not yet contain the latest changes. |
-| The browser cannot connect | Check that `npm run dev` is still running. Use the address printed in its terminal. Open that address in a browser; do not double-click `index.html`. |
-| Port 5173 is already in use | Vite may choose the next available port. Use the address it prints to open the home page. |
-| Refresh sends you back to payment | This is expected. The cart is saved, but card and address information must be entered again. |
-| The Place demo order button is disabled | Check the box confirming that you reviewed the details. Editing the bag requires checking it again. |
-| Browser tests cannot find a browser executable | Run `npx playwright install chromium`, then try `npm run test:e2e` again. |
-| Browser tests say port 4173 is in use | Stop any `npm run preview` process using that port, then rerun the tests. |
-| A support request was not delivered | The support form deliberately creates a local preview only. Sending requests would require a real inbox and a backend in a later lab. |
-
-`npm start` also works; it is another name for `npm run dev` in this project. You do not need to run both.
+| `node` or `npm` not found | Install a supported Node.js version and reopen the terminal. |
+| `package.json` not found | Enter the project folder before running npm commands. |
+| Only the frontend starts | Use `npm run dev` for all three processes; `dev:frontend` starts only Vite. |
+| Port 5173, 3001, or 3002 is in use | Stop the earlier project process using it, then restart. The launcher exits on port conflicts. |
+| Gear cannot load | Make sure inventory is running. If using AWS, check `.env.local`, including the `/dev` stage, then restart Vite. |
+| Order cannot check stock | Make sure the order service can reach inventory. Its `INVENTORY_SERVICE_URL` must be the inventory base URL. |
+| Order rejected for quantity | Use the returned available quantity or edit your bag. Review and confirm again. |
+| Refresh returns to payment | Expected: payment and shipping fields are kept only in memory. |
+| Place demo order is disabled | Check the review checkbox; wait if an order request is already pending. |
+| Test browser missing | Run `npx playwright install chromium`. |
+| Browser test ports are occupied | Stop the earlier test/preview processes on 4173, 4311, or 4312. |
+| Support message was not delivered | The support form creates a local preview only. |

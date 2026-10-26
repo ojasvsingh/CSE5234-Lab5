@@ -1,0 +1,20 @@
+{
+  "items": [
+    { "productId": "ridge-daypack", "quantity": 2 },
+    { "productId": "camp-bottle", "quantity": 1 }
+  ],
+  "payment": {
+    "cardHolderName": "Alex Taylor",
+    "cardNumber": "4242 4242 4242 4242",
+    "expirationDate": "12/35",
+    "cvvCode": "123"
+  },
+  "shipping": {
+    "name": "Alex Taylor",
+    "addressLine1": "123 Trailhead Lane",
+    "addressLine2": "",
+    "city": "Columbus",
+    "state": "OH",
+    "zip": "43210"
+  }
+}

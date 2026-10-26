@@ -4,6 +4,8 @@ node_modules/
 # Environment variables (DB passwords, API keys)
 .env
 .env.*
+!.env.example
+.aws-sam/
 
 # Build output (React)
 build/

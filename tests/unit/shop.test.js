@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { products } from '../../services/inventory/catalogue.js';
 import {
   normalizeCart, normalizeReceipt, changeQuantity, getTotals, getCartItems, formatMoney,
 } from '../../src/lib/shop.js';
@@ -12,8 +13,8 @@ test('catalog totals use integer cents and ignore prices injected through saved 
     { productId: 'ridge-daypack', quantity: 2, priceCents: 1 },
     { productId: 'camp-bottle', quantity: 3 },
   ];
-  assert.deepEqual(getTotals(cart), { itemCount: 5, subtotalCents: 26500, totalCents: 26500 });
-  assert.equal(getCartItems(cart)[0].lineTotalCents, 17800);
+  assert.deepEqual(getTotals(cart, products), { itemCount: 5, subtotalCents: 26500, totalCents: 26500 });
+  assert.equal(getCartItems(cart, products)[0].lineTotalCents, 17800);
   assert.equal(formatMoney(26500), '$265.00');
   assert.equal(getTotals([]).totalCents, 0);
 });
@@ -30,25 +31,29 @@ test('malformed storage, unknown products, invalid quantities, and duplicate lin
     { productId: 'summit-tent', quantity: '2' },
     { productId: 'camp-bottle', quantity: 90 },
     { productId: 'camp-bottle', quantity: 20 },
-  ]), [{ productId: 'camp-bottle', quantity: 99 }]);
+  ], products), [{ productId: 'camp-bottle', quantity: 99 }]);
 });
 
 test('quantity changes retain line order, cap at 99, and remove only the requested product', () => {
   const cart = [{ productId: 'ridge-daypack', quantity: 1 }, { productId: 'camp-bottle', quantity: 2 }];
-  assert.deepEqual(changeQuantity(cart, 'ridge-daypack', 100), [
+  assert.deepEqual(changeQuantity(cart, 'ridge-daypack', 100, products), [
     { productId: 'ridge-daypack', quantity: 99 }, { productId: 'camp-bottle', quantity: 2 },
   ]);
-  assert.deepEqual(changeQuantity(cart, 'ridge-daypack', 0), [{ productId: 'camp-bottle', quantity: 2 }]);
-  assert.deepEqual(changeQuantity(cart, 'ridge-daypack', 2.5), cart);
-  assert.deepEqual(changeQuantity(cart, 'no-product', 2), cart);
+  assert.deepEqual(changeQuantity(cart, 'ridge-daypack', 0, products), [{ productId: 'camp-bottle', quantity: 2 }]);
+  assert.deepEqual(changeQuantity(cart, 'ridge-daypack', 2.5, products), cart);
+  assert.deepEqual(changeQuantity(cart, 'no-product', 2, products), cart);
 });
 
 test('only a valid nonempty receipt can restore a confirmation page', () => {
   assert.equal(normalizeReceipt({ number: 'fake', cart: [] }), null);
   assert.equal(normalizeReceipt({ number: 'AB-12345678', cart: [] }), null);
-  assert.deepEqual(normalizeReceipt({
-    number: 'AB-12345678', cart: [{ productId: 'camp-bottle', quantity: 2 }], cardNumber: 'discard',
-  }), { number: 'AB-12345678', cart: [{ productId: 'camp-bottle', quantity: 2 }] });
+  const receipt = {
+    number: 'AB-12345678',
+    items: [{ id: 'camp-bottle', name: 'Camp Insulated Bottle', image: '/images/bottle.svg', priceCents: 2900, quantity: 2, lineTotalCents: 5800 }],
+    totals: { itemCount: 2, subtotalCents: 5800, totalCents: 5800 },
+  };
+  assert.deepEqual(normalizeReceipt({ ...receipt, cardNumber: 'discard' }), receipt);
+  assert.equal(normalizeReceipt({ ...receipt, totals: { ...receipt.totals, totalCents: 1 } }), null);
 });
 
 const validPayment = {
