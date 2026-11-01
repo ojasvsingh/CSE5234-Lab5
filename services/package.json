@@ -2,5 +2,9 @@
   "name": "adventure-beyond-services",
   "version": "1.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "aws-ssl-profiles": "1.1.2",
+    "mysql2": "3.24.6"
+  }
 }

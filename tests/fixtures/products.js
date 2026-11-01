@@ -1,4 +1,4 @@
-// Lab 7 allows warehouse data here. Orders check stock without reserving it.
+// Unit-test fixture only. Production inventory is read from MySQL.
 export const products = [
   {
     id: 'ridge-daypack',

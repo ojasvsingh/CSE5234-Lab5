@@ -1,19 +1,14 @@
 # Adventure Beyond
 
-Adventure Beyond is our three-person group's outdoor gear store for **CSE 5234 Labs 5, 6, and 7**.
+Adventure Beyond is our three-person group's outdoor gear store for **CSE 5234 Labs 5–8**. Lab 5 added shopping and checkout; Lab 6 added the company pages; Lab 7 added inventory and order microservices.
 
-Lab 5 added shopping and checkout. Lab 6 added the Home, About Us, and Contact Us pages. **Lab 7 adds two backend microservices:** one provides inventory and one checks orders. Products, prices, stock quantities, and confirmation numbers now come from these services.
+**Lab 8 adds a MySQL database.** The inventory service reads products from the database. The order service checks stock, saves the order and its related records, and then returns a confirmation number. Orders remain after restarting the application or the local database.
 
-You can run everything locally with one command after installation. AWS Lambda and API Gateway deployment files are also included. This is a classroom demo: it does not charge cards, ship products, or deliver support messages. Use sample payment and address details.
+This is a classroom demo. Use the sample customer and payment details below. It does not charge cards, ship products, or send emails. **AWS deployment files are included, but no cloud deployment is claimed.** The assignment's RDS requirement still needs an actual AWS deployment and verification.
 
-## 1. Download and run
+## 1. Install and start
 
-You need Node.js **22.12 or later** (20.19+ also works), npm, and Git. Check your installation:
-
-```sh
-node --version
-npm --version
-```
+You need **Node.js 22.12 or later**, npm, Git, and **Docker Desktop**. Node 20.19+ also works. Open Docker Desktop and wait until its engine is running.
 
 For a fresh download:
 
@@ -21,209 +16,197 @@ For a fresh download:
 git clone --branch ht-lab5 --single-branch https://github.com/ojasvsingh/CSE5234-Lab5.git adventure-beyond
 cd adventure-beyond
 npm ci
+npm run db:up
+npm run db:init
 npm run dev
 ```
 
-If you already have the project, open its folder and update it:
+If you already have the project:
 
 ```sh
 git switch ht-lab5
 git pull --ff-only origin ht-lab5
 npm ci
+npm run db:up
+npm run db:init
 npm run dev
 ```
 
-Save or commit your own changes before pulling. If Git reports a conflict, resolve it with the group rather than discarding anyone's work.
+Save or commit your own edits before pulling. If Git reports a conflict, resolve it with the group instead of discarding anyone's work.
 
-Open **http://127.0.0.1:5173/**. Keep the terminal running. Press **Ctrl+C** to stop all three processes.
+Open **http://127.0.0.1:5173/**. Keep the last terminal running.
 
-| Process | Local address | Purpose |
+| Command | What it does |
+| --- | --- |
+| `npm ci` | Installs the website packages and the backend's MySQL driver from their lockfiles |
+| `npm run db:up` | Starts a local MySQL 8.4 container and waits until it is ready; the first run downloads MySQL |
+| `npm run db:init` | Creates the five tables and inserts missing sample products; preserves existing data |
+| `npm run dev` | Starts the website and both microservices |
+| `npm run db:inspect` | Shows products and the latest saved orders in another terminal |
+| `npm run db:stop` | Stops the local database without deleting its data |
+
+Press **Ctrl+C** to stop the website and services. The database runs separately. Next time, use `npm run db:up` and `npm run dev`. You do not need to seed it every time.
+
+| Component | Local address | Purpose |
 | --- | --- | --- |
-| React website | `http://127.0.0.1:5173` | The pages you see and interact with |
-| Inventory service | `http://127.0.0.1:3001` | Product descriptions, prices, and warehouse quantities |
-| Order service | `http://127.0.0.1:3002` | Validates orders, calls inventory, and creates confirmations |
+| Website | `http://127.0.0.1:5173` | The pages you see |
+| Inventory service | `http://127.0.0.1:3001` | Reads product details, prices, and available quantities |
+| Order service | `http://127.0.0.1:3002` | Checks and saves orders |
+| MySQL | `127.0.0.1:33306` | Stores the five tables; this is not a browser URL |
 
-`npm ci` installs the versions recorded in the lockfile. `npm run dev` starts all three processes. No AWS credentials, database, `.env` file, or extra backend packages are needed for local use. `npm start` does the same thing as `npm run dev`.
+Local development requires no AWS account or `.env` file. The defaults in [compose.yaml](compose.yaml) match the backend. MySQL data lives in the Docker volume `adventure-beyond_mysql-data`. Stopping or restarting the container preserves it. Removing that volume deletes the data.
 
-## 2. Understand the Lab 7 flow
+To change local connection settings, copy [.env.example](.env.example) to `.env` and edit its `DB_` values. The backend reads `.env`; Vite also reads its public `VITE_` values. Never put a database password in a variable starting with `VITE_`. Docker's database/user/password settings initialize a **new** volume only; changing `.env` does not change an existing MySQL user's password.
 
-1. The browser requests the inventory from the inventory service.
-2. The website displays the returned products and prices. The cart keeps product IDs and quantities.
-3. On the review page, **Place demo order** sends the items, payment details, and shipping details to the order service as JSON.
-4. The order service validates the request and makes an **HTTP request to the inventory service** to check stock and obtain prices.
-5. Enough stock: the order service returns a confirmation number and receipt. Not enough stock: it returns a `409` error identifying the available quantities.
-6. The browser clears checkout details only after a successful response. On failure, it keeps the bag and form values so you can correct or retry the order.
+## 2. Understand Lab 8
 
-An **API** is a way for programs to exchange requests and responses. **JSON** is the text format used for those responses. A **microservice** is a separate backend program with one responsibility. Here the two services run independently and communicate over HTTP; the order service does not import the inventory's product file.
+An **API** lets programs exchange requests and responses. A **microservice** is a separate backend program with one responsibility. A **database table** stores related records, such as products or orders.
 
-| Required API | What it returns |
+1. The website requests products from the inventory service.
+2. The inventory service runs a SQL query against `ITEM` and returns JSON. Neither service contains a fallback product list.
+3. The customer enters payment and shipping details, including an email address, and submits the order.
+4. The order service validates the fields and calls the inventory service over HTTP, preserving the Lab 7 requirement.
+5. Inside one database **transaction**, it rechecks the current items, saves payment and shipping records, saves the order header, and saves its item lines. A transaction means these writes succeed together or are rolled back together.
+6. Only after a successful commit does the service return `201`, the saved order ID, an `AB-XXXXXXXX` confirmation, and the receipt. The website then clears the bag.
+
+| Table | What it stores |
 | --- | --- |
-| `GET /inventory-management/inventory` | All inventory items |
-| `GET /inventory-management/inventory/items/{id}` | One item with the given ID |
-| `GET /inventory-management/inventory/items?name=itemName` | Items whose names contain the search text |
-| `POST /order-processing/order` | A confirmation and receipt, or a validation/stock/service error |
+| `ITEM` | Five initial products, prices, quantities, and display information |
+| `CUSTOMER_ORDER` | Customer name/email, links to payment/shipping, and status `New` |
+| `CUSTOMER_ORDER_LINE_ITEM` | Each purchased item, requested quantity, and its name/price at purchase time |
+| `PAYMENT_INFO` | Cardholder name, masked card number, and expiration date |
+| `SHIPPING_INFO` | Address, country, and email |
 
-Name searches ignore capitalization. You can combine `id` and `name` query parameters. Full request examples and error formats are in [docs/API.md](docs/API.md).
+Every table has a database-generated, auto-incrementing `ID`. Foreign keys connect the records. Payment and shipping tables do **not** contain an order ID. The order header points to them, as the assignment describes. The line-item table points to its order and inventory item.
 
-The inventory file is hardcoded **inside the inventory service**, as Lab 7 allows. There is no product list or confirmation generator in the frontend. The frontend still handles presentation tasks such as input feedback, category filtering, and displaying cart subtotals. The order service independently validates the submitted data and calculates the authoritative total.
+The starter scripts use both `ITEM_ID` and `ITEM_NUMBER`; our line items include both. A separate `SLUG`, such as `ridge-daypack`, keeps the existing API URLs working. Prices use SQL `DECIMAL(10,2)` and integer cents in JSON, avoiding floating-point rounding. The confirmation uses the saved order ID in hexadecimal, padded to eight characters.
 
-This lab **checks stock without reserving or decrementing it**. Repeated demo orders see the same warehouse quantities. Orders and personal details are not stored in a database. Stock updates, durable orders, real payments, and fulfillment are outside this implementation.
+The course's sample payment table includes a CVV column. This implementation leaves it `NULL` and saves only the card number's last four digits with a mask. CVV is validated for checkout but never stored. Use fictional customer details because names, email addresses, and shipping addresses **are** saved for Lab 8.
 
-## 3. Demonstrate a successful order
+This remains a stock-check demo: placing an order does **not** reserve or decrement stock. Durable idempotency, bank processing, account login, and order-history pages are outside the lab. If a response is lost after a commit, retrying can create another order; the browser only prevents duplicate clicks while a request is pending.
 
-1. Click **Shop gear**. Add **2 Ridge 28L Daypacks** and **1 Camp Insulated Bottle**.
-2. Open the bag. With the included inventory, the total should be **$207.00** (`2 × $89 + $29`).
-3. Try changing a quantity or removing an item, then restore those quantities.
-4. Click **Continue to payment** and enter the sample payment details below.
-5. Continue to shipping and enter the sample address.
-6. Review the order. Try **Edit payment**, **Edit shipping**, or **Edit your bag**.
-7. Check the review checkbox and click **Place demo order**. The button displays a pending state while the service checks stock.
-8. The confirmation page should show an `AB-XXXXXXXX` number returned by the backend, two receipt lines, and a total of **$207.00**. The bag should be empty.
-9. Refresh: the receipt still appears. It retains the prices returned when the order was confirmed.
+## 3. Demonstrate an order and its saved records
 
-| Payment field | Sample value |
+1. Open **Shop gear** and add **2 Ridge 28L Daypacks** and **1 Camp Insulated Bottle**.
+2. Open the bag. The seeded prices give a total of **$207.00** (`2 × $89 + $29`).
+3. Continue to payment and use the sample values below.
+4. Enter the shipping details. The demo supports US addresses.
+5. Review the order, check the confirmation checkbox, and click **Place demo order**.
+6. Note the confirmation number. Refreshing keeps the receipt visible.
+7. In a second terminal, run `npm run db:inspect`. Find the same confirmation with status `New`, two item lines, and total `207.00`.
+8. Stop the app, run `npm run db:stop`, then `npm run db:up` and `npm run db:inspect`. The order is still present.
+
+| Field | Sample value |
 | --- | --- |
-| Cardholder name | Alex Taylor |
+| Cardholder / full name | Alex Taylor |
 | Card number | 4242 4242 4242 4242 |
-| Expiration date | 12/35, or another future date in MM/YY format |
+| Expiration date | 12/35, or another future MM/YY date |
 | CVV | 123 |
-
-| Shipping field | Sample value |
-| --- | --- |
-| Full name | Alex Taylor |
+| Email address | alex@example.com |
 | Address line 1 | 123 Trailhead Lane |
-| Address line 2 | Leave blank, or use Apt 5 |
+| Address line 2 | Leave blank, or Apt 5 |
 | City | Columbus |
 | State | Ohio |
 | ZIP code | 43210 |
 
-The demo accepts US addresses and charges no shipping or tax. Payment and address validation checks the input's format; it does not contact a bank or verify a street address.
+To demonstrate insufficient stock, request **13 daypacks** when the database contains 12. Submission returns `409 INSUFFICIENT_STOCK`; no order is inserted. Click **Use available quantities**, review again, and submit 12. The bag permits quantities up to 99 so this error can be demonstrated.
 
-### Demonstrate insufficient stock
+To demonstrate a database outage, stop the database while on the review page, then submit. The request fails and the bag/form remain. Restart it to retry. The application never substitutes sample data when the database is down.
 
-The sample warehouse contains **12 daypacks**. Add **13 daypacks**, complete checkout, and submit:
+For SQL examples, manual inserts, and a full requirement checklist, see [docs/DATABASE.md](docs/DATABASE.md). The provided course TXT mixes `CREATE TABLE` and `DROP TABLE` examples: do not run that entire file as a setup script.
 
-- The order service returns `409 INSUFFICIENT_STOCK`, with `requestedQuantity: 13` and `availableQuantity: 12`.
-- The review page keeps the order and shows the shortage.
-- Click **Use available quantities** to reduce the bag to 12. Review and check the checkbox again, then submit successfully. An available quantity of zero removes that item from the bag.
+## 4. APIs and pages
 
-The cart allows 1–99 of a product so the shortage flow can be demonstrated. The warehouse quantity, which is shown on each product card, is checked again by the order service.
+| API | Result |
+| --- | --- |
+| `GET /inventory-management/inventory` | All database products |
+| `GET /inventory-management/inventory/items/{id}` | Product matching its slug |
+| `GET /inventory-management/inventory/items?name=itemName` | Case-insensitive name search |
+| `POST /order-processing/order` | Saves an order and returns its confirmation, or an error |
 
-### Verify service failures
+Name and `id` query parameters can be combined. Full JSON examples and errors are in [docs/API.md](docs/API.md).
 
-For an explicit failure demonstration, use three terminals instead of `npm run dev`:
+| Page | Address |
+| --- | --- |
+| Home | `/` |
+| About Us and all three executives | `/about` |
+| Contact Us, support policies, and FAQ | `/contact` |
+| Shop | `/purchase` |
+| Payment | `/purchase/paymentEntry` |
+| Shipping | `/purchase/shippingEntry` |
+| Review | `/purchase/viewOrder` |
+| Confirmation | `/purchase/viewConfirmation` |
 
-```sh
-npm run start:inventory
-```
+All pages share the navigation, footer, and bag, with phone layouts. The Contact Us form still creates a local preview only. Team profiles are in `src/data/company.js`; preserve teammates' entries when editing.
 
-```sh
-npm run start:orders
-```
-
-```sh
-npm run dev:frontend
-```
-
-Stop the inventory terminal after reaching order review, then submit. You should see a stock-check failure, with no confirmation and no lost form data. Restart inventory and retry. If inventory is down when you first open the shop, the page offers **Try loading gear again**.
-
-## 4. Lab 5 and Lab 6 pages
-
-| Page | Address | Purpose |
-| --- | --- | --- |
-| Home | `/` | Brand introduction and API-provided featured products |
-| About Us | `/about` | Mission, vision, strategy, and all three executive profiles |
-| Contact Us | `/contact` | Support topics, example return policies, FAQ, and request preview |
-| Shop | `/purchase` | API-provided products, quantity controls, and cart |
-| Payment | `/purchase/paymentEntry` | Payment entry and format checks |
-| Shipping | `/purchase/shippingEntry` | Shipping address entry and checks |
-| Review | `/purchase/viewOrder` | Review details and submit to the order service |
-| Confirmation | `/purchase/viewConfirmation` | Backend confirmation number and receipt |
-
-Every page uses the shared navigation, footer, and shopping bag. Layouts adapt to phones. Opening a checkout page before completing its prerequisites sends you back to the appropriate step.
-
-On Contact Us, try choosing a return topic, submitting an empty form, previewing a filled request, downloading it, and opening FAQ answers. **Support requests are local previews only.** The `.example` email address is not monitored.
-
-## 5. Find the code you need
+## 5. Find the code
 
 | Change or understand | File |
 | --- | --- |
-| Products, prices, stock, featured flags | [services/inventory/catalogue.js](services/inventory/catalogue.js) |
-| Inventory GET endpoints | [services/inventory/handler.js](services/inventory/handler.js) |
-| Order validation, stock checks, confirmation numbers | [services/orders/handler.js](services/orders/handler.js) |
-| Shared payment/address format checks | [services/shared/validation.js](services/shared/validation.js) |
-| Local HTTP server / Lambda event adapter | [services/shared/http.js](services/shared/http.js), [services/shared/lambda.js](services/shared/lambda.js) |
-| Browser requests to the two services | [src/lib/api.js](src/lib/api.js) |
-| Cart, inventory loading, and checkout state | [src/context/ShopContext.jsx](src/context/ShopContext.jsx) |
-| Cart display totals and receipt storage | [src/lib/shop.js](src/lib/shop.js) |
-| Pages | [src/pages](src/pages) |
-| Company text, three member profiles, and support content | [src/data/company.js](src/data/company.js) |
-| Photos and illustrations | [public/images](public/images) |
-| Shared menu and footer | [src/components/Layout.jsx](src/components/Layout.jsx) |
-| Colors, spacing, and phone layouts | [src/styles.css](src/styles.css), [src/site.css](src/site.css) |
-| Start all services together | [scripts/dev.mjs](scripts/dev.mjs) |
-| AWS resources | [template.yaml](template.yaml) |
+| Tables and constraints | [database/001-schema.sql](database/001-schema.sql) |
+| Initial product data | [database/002-seed.sql](database/002-seed.sql) |
+| Manual insert example | [database/003-manual-check.sql](database/003-manual-check.sql) |
+| MySQL connections and TLS | [services/database/pool.js](services/database/pool.js) |
+| Inventory SQL queries | [services/database/items.js](services/database/items.js) |
+| Order transaction | [services/database/orders.js](services/database/orders.js) |
+| Inventory API | [services/inventory/handler.js](services/inventory/handler.js) |
+| Order API and HTTP inventory call | [services/orders/handler.js](services/orders/handler.js) |
+| Input validation | [services/shared/validation.js](services/shared/validation.js) |
+| Browser API calls | [src/lib/api.js](src/lib/api.js) |
+| Shopping/checkout state | [src/context/ShopContext.jsx](src/context/ShopContext.jsx) |
+| Pages and styling | [src/pages](src/pages), [src/styles.css](src/styles.css), [src/site.css](src/site.css) |
+| Local database and startup | [compose.yaml](compose.yaml), [scripts/dev.mjs](scripts/dev.mjs) |
+| Optional AWS deployment | [infra/rds.yaml](infra/rds.yaml), [template.yaml](template.yaml), [docs/AWS.md](docs/AWS.md) |
 
-To edit a product, change `services/inventory/catalogue.js`, restart the inventory service (or restart `npm run dev`), and refresh the browser. Do not add product data back into React. Prices are whole-number **cents**: `8900` means `$89.00`.
+Edit live products with SQL, then refresh the browser. Editing the seed file does not overwrite existing rows. Backend code changes require restarting `npm run dev`.
 
-Team profiles are already supplied by Haotian Luo, Ojasv Singh, and Sai Chappidi. Each member can edit their entry in `src/data/company.js`; photos are in `public/images/team`. Preserve your teammates' entries when editing.
-
-### What survives a refresh?
-
-| Information | Where it lives |
-| --- | --- |
-| Cart IDs and quantities | Current tab's `sessionStorage` |
-| Latest confirmation and receipt items/totals | Current tab's `sessionStorage` |
-| Payment and shipping details | Browser memory until successful submission or refresh |
-| Inventory | Inventory service's sample catalogue |
-
-Submitting an order sends payment and shipping details to the order service because Lab 7 requires them in the request. The service validates them without storing, logging, or returning them. A receipt contains only the confirmation number and purchased items/totals. Contact form details are not sent anywhere. Storage-disabled browsers still support checkout until refresh.
+The browser stores cart IDs/quantities and the latest receipt in the current tab's `sessionStorage`. Unsubmitted payment and shipping fields stay in memory. Submitted orders live in MySQL. The receipt does not include customer or payment details, and there is no public API for reading stored customer records.
 
 ## 6. Run the checks
 
+Start the separate, disposable test database first:
+
 ```sh
+npm run db:test:up
 npm test
-```
-
-This runs the unit and API integration tests. API tests start temporary local servers, check real HTTP communication between services, and shut them down automatically.
-
-```sh
 npx playwright install chromium
 npm run test:e2e
 ```
 
-Install the test browser once, then run the browser tests. They build the frontend and start temporary servers on ports **4173, 4311, and 4312**. Keep those ports free. Your usual development servers can remain running.
+Tests use MySQL on **127.0.0.1:33307** with the database `adventure_beyond_test`. They do not inherit development or RDS connection settings. Run the API and browser suites one after the other, because both use this test database. Its storage is temporary and disappears when its container stops; your development database is separate.
 
-The suite contains **12 unit tests, 9 API tests, and 36 browser tests**. It covers successful checkout, missing stock, service failures, retry, duplicate clicks, dynamic API products, receipt snapshots, company pages, and the existing support flows. Browser tests use desktop and phone screen sizes in Chromium.
+The checks cover real SQL reads/writes, transaction rollback, saved price snapshots, missing stock, invalid email, unavailable services, and desktop/mobile checkout. The recorded results and screenshots are in [docs/LAB8-VERIFICATION.md](docs/LAB8-VERIFICATION.md). Browser tests start their own app servers on **4173, 4311, and 4312**, leaving normal development servers alone. `npm run test:unit` runs the pure unit tests without MySQL.
 
-To inspect a production build locally:
+To stop only the test database:
+
+```sh
+docker compose --profile test stop test-db
+```
+
+To preview the production build locally, stop the development app first, leave MySQL running, and run:
 
 ```sh
 npm run build
 npm run preview:all
 ```
 
-This starts the built website on port 4173 with both services. Stop any development services on ports 3001/3002 first. Neither command deploys to AWS.
+Open `http://127.0.0.1:4173`. These commands do not deploy to AWS.
 
-## 7. AWS deployment
+## 7. AWS and common problems
 
-The assignment includes a Lambda/API Gateway walkthrough. This project provides the same four endpoint paths with **two Lambda functions and two REST APIs**, using Node.js as the allowed alternative stack. [docs/AWS.md](docs/AWS.md) explains deployment, environment variables, testing, and cleanup. The frontend can call AWS APIs while still running locally.
-
-For public frontend hosting, the static host must serve `index.html` for client-side routes. Vite's local servers already do this.
-
-## 8. Common problems
+Lab 8 explicitly requires **Amazon RDS**. Local MySQL proves the data integration, but does not complete that cloud requirement. [docs/AWS.md](docs/AWS.md) explains the prepared RDS and Lambda configurations, initialization, networking, verification, and cleanup. Creating AWS resources is a separate action and can incur charges.
 
 | Problem | What to do |
 | --- | --- |
-| `node` or `npm` not found | Install a supported Node.js version and reopen the terminal. |
-| `package.json` not found | Enter the project folder before running npm commands. |
-| Only the frontend starts | Use `npm run dev` for all three processes; `dev:frontend` starts only Vite. |
-| Port 5173, 3001, or 3002 is in use | Stop the earlier project process using it, then restart. The launcher exits on port conflicts. |
-| Gear cannot load | Make sure inventory is running. If using AWS, check `.env.local`, including the `/dev` stage, then restart Vite. |
-| Order cannot check stock | Make sure the order service can reach inventory. Its `INVENTORY_SERVICE_URL` must be the inventory base URL. |
-| Order rejected for quantity | Use the returned available quantity or edit your bag. Review and confirm again. |
-| Refresh returns to payment | Expected: payment and shipping fields are kept only in memory. |
-| Place demo order is disabled | Check the review checkbox; wait if an order request is already pending. |
-| Test browser missing | Run `npx playwright install chromium`. |
-| Browser test ports are occupied | Stop the earlier test/preview processes on 4173, 4311, or 4312. |
-| Support message was not delivered | The support form creates a local preview only. |
+| Docker daemon is unavailable | Open Docker Desktop and wait for it to finish starting |
+| Database is unavailable | Run `npm run db:up`, then `npm run db:init`; check your `.env` values |
+| Access denied after changing passwords | Existing MySQL accounts keep their old passwords; restore the matching setting or change the user with SQL |
+| Cannot load products | Check the database and inventory service; the page offers a retry |
+| Cannot place an order | Read the shown error; check inventory and database, or correct shipping/payment fields |
+| Port already in use | Stop the older process on that port; defaults are listed above |
+| `package.json` not found | Enter the project folder before running npm commands |
+| Refresh returns to payment | Expected: unsubmitted payment/shipping fields are only in memory |
+| Test database unavailable | Run `npm run db:test:up`; tests use port 33307, not the development database |
+| Browser missing | Run `npx playwright install chromium` |
+| Seed changes do not appear | Setup preserves existing products; update the database row explicitly |
+| AWS API cannot reach RDS | Check its VPC/subnets/security groups, credentials, and TLS; see the AWS guide |

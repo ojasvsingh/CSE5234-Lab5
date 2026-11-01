@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { products } from '../../services/inventory/catalogue.js';
+import { products } from '../fixtures/products.js';
 import { addProduct, openBag, startCheckout, fillPayment, fillShipping } from './helpers.js';
 
 const inventoryPath = '**/inventory-management/inventory';

@@ -1,10 +1,10 @@
-import { products } from './catalogue.js';
+import { createItemRepository } from '../database/items.js';
 import { HttpError, json } from '../shared/responses.js';
 import { lambdaAdapter } from '../shared/lambda.js';
 
 const base = '/inventory-management/inventory';
 
-export function createInventoryRoute(catalogue = products) {
+export function createInventoryRoute(repository = createItemRepository()) {
   return async ({ method, path, query }) => {
     if (path === '/health' && method === 'GET') return json(200, { service: 'inventory-management', status: 'ok' });
     const idMatch = path.match(/^\/inventory-management\/inventory\/items\/([^/]+)$/);
@@ -13,13 +13,13 @@ export function createInventoryRoute(catalogue = products) {
     if (idMatch) {
       let id;
       try { id = decodeURIComponent(idMatch[1]); } catch { throw new HttpError(400, 'INVALID_ID', 'The item ID is invalid.'); }
-      const item = catalogue.find((product) => product.id === id);
+      const [item] = await repository.find({ id });
       if (!item) throw new HttpError(404, 'ITEM_NOT_FOUND', 'No inventory item has that ID.');
       return json(200, { item });
     }
     const id = query.get('id')?.trim();
     const name = query.get('name')?.trim().toLowerCase();
-    return json(200, { items: catalogue.filter((item) => (!id || item.id === id) && (!name || item.name.toLowerCase().includes(name))) });
+    return json(200, { items: await repository.find({ id, name }) });
   };
 }
 

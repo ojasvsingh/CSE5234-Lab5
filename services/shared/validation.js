@@ -1,7 +1,7 @@
 // Shared format checks; the order service validates every request independently.
 export const emptyPayment = { cardHolderName: '', cardNumber: '', expirationDate: '', cvvCode: '' };
 export const emptyShipping = {
-  name: '', addressLine1: '', addressLine2: '', city: '', state: '', zip: '',
+  name: '', email: '', country: 'US', addressLine1: '', addressLine2: '', city: '', state: '', zip: '',
 };
 
 export const states = [
@@ -49,6 +49,8 @@ export function validateShipping(shipping) {
       city: 'Enter a city.',
     }[key];
   }
+  if (typeof shipping.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shipping.email.trim()) || shipping.email.length > 200) errors.email = 'Enter a valid email address.';
+  if (shipping.country !== 'US') errors.country = 'This demo supports US addresses only.';
   if (!states.some(([code]) => code === shipping.state)) errors.state = 'Choose a state.';
   if (!/^\d{5}(-\d{4})?$/.test(shipping.zip.trim())) errors.zip = 'Enter a ZIP code, such as 43210 or 43210-1234.';
   return errors;

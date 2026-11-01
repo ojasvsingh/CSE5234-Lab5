@@ -1,7 +1,13 @@
 {
   "items": [
-    { "productId": "ridge-daypack", "quantity": 2 },
-    { "productId": "camp-bottle", "quantity": 1 }
+    {
+      "productId": "ridge-daypack",
+      "quantity": 2
+    },
+    {
+      "productId": "camp-bottle",
+      "quantity": 1
+    }
   ],
   "payment": {
     "cardHolderName": "Alex Taylor",
@@ -15,6 +21,8 @@
     "addressLine2": "",
     "city": "Columbus",
     "state": "OH",
-    "zip": "43210"
+    "zip": "43210",
+    "email": "alex@example.com",
+    "country": "US"
   }
 }

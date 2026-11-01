@@ -90,7 +90,7 @@ test('invalid payment and shipping inputs stay on their step with useful errors'
   await expect(page.getByText('Enter an expiration date that has not passed.')).toBeVisible();
   await fillPayment(page);
   await page.getByRole('button', { name: 'Review your order' }).click();
-  await expect(page.locator('.field-error')).toHaveCount(5);
+  await expect(page.locator('.field-error')).toHaveCount(6);
   await fillShipping(page);
   await expect(page.getByRole('button', { name: /^Place demo order/ })).toBeDisabled();
 });

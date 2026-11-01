@@ -1,6 +1,6 @@
-# Lab 7 API guide
+# Labs 7–8 API guide
 
-Run `npm run dev` from the project root before trying these commands. Inventory listens on port 3001 and orders on port 3002. When using AWS, replace each local base URL with the matching deployed invoke URL, including its `/dev` stage.
+Start and initialize MySQL with `npm run db:up` and `npm run db:init`, then run `npm run dev` from the project root before trying these commands. Inventory listens on port 3001 and orders on port 3002. When using AWS, replace each local base URL with the matching deployed invoke URL, including its `/dev` stage.
 
 ## Inventory
 
@@ -15,7 +15,7 @@ The collection and search endpoints return `200` with `{ "items": [...] }`. The 
 
 Each item has `id`, `name`, `category`, `description`, `priceCents`, `image`, `color`, `tag`, and `availableQuantity`. A `featured: true` flag selects homepage recommendations. Image paths refer to assets hosted with the frontend.
 
-Sample warehouse quantities are 12 daypacks, 8 tents, 20 jackets, 15 pairs of poles, and 30 bottles. They live only in [the inventory catalogue](../services/inventory/catalogue.js). No endpoint in this lab changes stock.
+Sample warehouse quantities are 12 daypacks, 8 tents, 20 jackets, 15 pairs of poles, and 30 bottles. The initial values are inserted by [the SQL seed](../database/002-seed.sql); every inventory request reads MySQL. No endpoint in this lab changes stock.
 
 ## Submit an order
 
@@ -29,15 +29,17 @@ curl -i http://127.0.0.1:3002/order-processing/order \
 
 [The sample JSON file](../examples/order.json) contains item IDs and quantities, payment information, and a shipping address. It uses sample details; keep the expiration date in the future. In Windows PowerShell, use `curl.exe` and put the command on one line if needed.
 
-The service requires 1–100 item lines. Each quantity must be an integer from 1 to 99. Duplicate product IDs are combined before checking stock, and their combined quantity cannot exceed 99. Unknown IDs are reported as unavailable. Payment and shipping fields are checked on the server even if the browser already validated them. Address line 2 is optional. Each text field is limited to 200 characters; request bodies are limited to 64 KiB.
+The service requires 1–100 item lines. Each quantity must be an integer from 1 to 99. Duplicate product IDs are combined before checking stock, and their combined quantity cannot exceed 99. Unknown IDs are reported as unavailable. Payment and shipping fields are checked on the server even if the browser already validated them. Shipping email is required. Country defaults to `US`, the only supported country. Address line 2 is optional. Each text field is limited to 200 characters; request bodies are limited to 64 KiB.
 
-The client does not set the price. Submitted prices or totals are ignored. The order service calls the inventory service over HTTP, obtains prices and stock, and calculates the receipt using integer cents.
+The client does not set the price. Submitted prices or totals are ignored. The order service calls the inventory service over HTTP, obtains prices and stock, then rechecks the current database rows in the save transaction and calculates the receipt using integer cents.
 
 Success returns HTTP **201**, for example:
 
 ```json
 {
-  "confirmationNumber": "AB-1234ABCD",
+  "orderId": 1,
+  "confirmationNumber": "AB-00000001",
+  "status": "New",
   "items": [
     {
       "id": "camp-bottle",
@@ -53,7 +55,7 @@ Success returns HTTP **201**, for example:
 }
 ```
 
-The number above is illustrative; each successful request gets a generated number. The supplied two-daypack/one-bottle example returns a total of 20700 cents. No payment or shipping information appears in the response.
+The number above is illustrative. The confirmation is derived from the committed database order ID (hexadecimal, padded to eight characters). The supplied two-daypack/one-bottle example returns a total of 20700 cents. No payment or shipping information appears in the response.
 
 ## Errors
 
@@ -69,6 +71,7 @@ Errors use `{ "error": { "code": "...", "message": "..." } }`.
 | 409 | `INSUFFICIENT_STOCK` | One or more requested quantities exceed current stock |
 | 413 | `PAYLOAD_TOO_LARGE` | Body exceeds 64 KiB |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | An order was not sent as `application/json` |
+| 503 | `DATABASE_UNAVAILABLE` | The database could not complete a read or order transaction |
 | 503 | `INVENTORY_UNAVAILABLE` | Inventory failed, timed out, or returned invalid data |
 
 A shortage response includes all unavailable lines:
@@ -85,12 +88,12 @@ A shortage response includes all unavailable lines:
 }
 ```
 
-The browser uses these quantities to offer a correction. Failed requests never receive a confirmation number and do not clear checkout details. Payment/shipping format failures also include `error.fields.payment` and `error.fields.shipping`.
+The browser uses these quantities to offer a correction. Error responses do not include a confirmation number and do not clear checkout details. Validation and stock errors insert no rows. A failed database write rolls back its transaction. If the connection is lost during/after commit, the client may not know whether the order was saved; retrying can create another order. Payment/shipping format failures also include `error.fields.payment` and `error.fields.shipping`.
 
 ## Service behavior
 
 - `GET /health` exists on each **local** service for a quick status check.
 - The order service waits up to 5 seconds for inventory; the browser waits up to 10 seconds for an API response.
 - Responses have `Cache-Control: no-store`. CORS and `OPTIONS` support allow calls from a separately hosted frontend.
-- The services do not log request bodies or store orders, card details, or addresses. API Gateway data tracing is not enabled by the deployment template.
-- This is a stock-check demonstration. It does not reserve/decrement stock, provide durable idempotency, charge cards, or persist orders. Disabling duplicate browser submissions prevents extra clicks during one pending request; it is not a distributed transaction system.
+- Successful orders persist a header, item lines, shipping details, and a payment summary in one transaction. Only the masked card number is stored; CVV is never stored. Request bodies are not logged. There is no public order-read endpoint. API Gateway data tracing is not enabled.
+- This checks stock without reserving/decrementing it or charging cards. Disabling duplicate browser submissions prevents extra clicks during one pending request; there is no durable idempotency key.
