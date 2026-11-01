@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "dev:rds": "node --env-file=.env.rds scripts/dev.mjs",
     "start": "node scripts/dev.mjs",
     "build": "vite build",
     "preview": "vite preview",
@@ -26,7 +27,10 @@
     "db:init": "node scripts/database.mjs",
     "db:test:up": "docker compose --profile test up -d --wait test-db",
     "test:unit": "node --test tests/unit/*.test.js",
-    "db:inspect": "node scripts/inspect-database.mjs"
+    "db:inspect": "node scripts/inspect-database.mjs",
+    "rds:setup": "node scripts/rds.mjs setup",
+    "rds:inspect": "node scripts/rds.mjs inspect",
+    "rds:manual": "node scripts/rds.mjs manual"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.3.0",

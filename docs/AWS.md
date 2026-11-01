@@ -1,8 +1,8 @@
-# Optional AWS deployment for Labs 7–8
+# Optional AWS-hosted microservices for Labs 7–8
 
-**These files are prepared for deployment; they do not prove that anything has been deployed.** Local development and tests create no AWS resources. Lab 8 explicitly asks for an RDS database, so actual RDS setup and verification remain necessary for that part of the assignment.
+For the simpler Lab 8 setup—local website and services connected to RDS—follow [RDS-LOCAL.md](RDS-LOCAL.md). This page describes the alternative with a private database and AWS-hosted services. **The private RDS and Lambda templates below remain deployment options, not evidence that those services are running.**
 
-There are two templates:
+This alternative uses two templates:
 
 - [infra/rds.yaml](../infra/rds.yaml): a private RDS MySQL instance, database subnet/parameter groups, two security groups in an **existing VPC**, and an RDS-managed administrator secret in Secrets Manager.
 - [template.yaml](../template.yaml): two Node.js Lambda functions, two API Gateway REST APIs, execution roles, and `dev` stages. The functions connect to the existing database.

@@ -1,0 +1,199 @@
+{
+  "capturedAt": "2026-11-01T17:23:43.031Z",
+  "source": "Live AWS APIs and TLS MySQL queries; not an AWS console export.",
+  "deployment": {
+    "profile": "school",
+    "region": "us-east-1",
+    "stack": "adventure-beyond-lab8-rds",
+    "instance": "adventure-beyond-lab8",
+    "status": "available",
+    "engine": "mysql",
+    "version": "8.4.11",
+    "instanceClass": "db.t4g.micro",
+    "storageGiB": 20,
+    "encrypted": true,
+    "multiAZ": false,
+    "networkAccess": "TCP 3306 from one IPv4 /32 only",
+    "parameterStatus": "in-sync"
+  },
+  "checks": {
+    "liveInventoryUpdate": {
+      "priceCents": 3129,
+      "availableQuantity": 3,
+      "browserMatched": true,
+      "restored": true
+    },
+    "insufficientStock": {
+      "status": 409,
+      "noRowsInsertedInAllFourTables": true
+    },
+    "restrictedAppUser": {
+      "customerReadsDenied": true,
+      "inventoryUpdatesDenied": true
+    },
+    "manualInserts": {
+      "defaultStatus": "New",
+      "lineTotal": "178.00",
+      "rolledBack": true
+    },
+    "browserOrdersPersisted": true
+  },
+  "orders": [
+    {
+      "viewport": "desktop",
+      "confirmation": "AB-00000001",
+      "ID": 1,
+      "STATUS": "New",
+      "SHIPPING_INFO_ID_FK": 1,
+      "PAYMENT_INFO_ID_FK": 1,
+      "COUNTRY": "US",
+      "CARD_NUM": "****4242",
+      "CVV": null,
+      "CREATED_AT": "2026-11-01T17:23:47.000Z",
+      "lines": [
+        {
+          "ITEM_ID": 1,
+          "ITEM_NUMBER": 1001,
+          "ITEM_NAME": "Ridge 28L Daypack",
+          "QUANTITY": 2,
+          "UNIT_PRICE": "89.00"
+        },
+        {
+          "ITEM_ID": 5,
+          "ITEM_NUMBER": 1005,
+          "ITEM_NAME": "Camp Insulated Bottle",
+          "QUANTITY": 1,
+          "UNIT_PRICE": "29.00"
+        }
+      ],
+      "total": "207.00",
+      "survivedBrowserRefresh": true
+    },
+    {
+      "viewport": "mobile",
+      "confirmation": "AB-00000002",
+      "ID": 2,
+      "STATUS": "New",
+      "SHIPPING_INFO_ID_FK": 2,
+      "PAYMENT_INFO_ID_FK": 2,
+      "COUNTRY": "US",
+      "CARD_NUM": "****4242",
+      "CVV": null,
+      "CREATED_AT": "2026-11-01T17:23:48.000Z",
+      "lines": [
+        {
+          "ITEM_ID": 1,
+          "ITEM_NUMBER": 1001,
+          "ITEM_NAME": "Ridge 28L Daypack",
+          "QUANTITY": 2,
+          "UNIT_PRICE": "89.00"
+        },
+        {
+          "ITEM_ID": 5,
+          "ITEM_NUMBER": 1005,
+          "ITEM_NAME": "Camp Insulated Bottle",
+          "QUANTITY": 1,
+          "UNIT_PRICE": "29.00"
+        }
+      ],
+      "total": "207.00",
+      "survivedBrowserRefresh": true
+    }
+  ],
+  "tls": {
+    "protocol": "TLSv1.3",
+    "cipher": "TLS_AES_256_GCM_SHA384",
+    "required": true,
+    "certificateAndHostnameVerified": true
+  },
+  "tables": [
+    {
+      "tableName": "CUSTOMER_ORDER",
+      "idColumn": "ID",
+      "extra": "auto_increment"
+    },
+    {
+      "tableName": "CUSTOMER_ORDER_LINE_ITEM",
+      "idColumn": "ID",
+      "extra": "auto_increment"
+    },
+    {
+      "tableName": "ITEM",
+      "idColumn": "ID",
+      "extra": "auto_increment"
+    },
+    {
+      "tableName": "PAYMENT_INFO",
+      "idColumn": "ID",
+      "extra": "auto_increment"
+    },
+    {
+      "tableName": "SHIPPING_INFO",
+      "idColumn": "ID",
+      "extra": "auto_increment"
+    }
+  ],
+  "items": [
+    {
+      "ITEM_NUMBER": 1001,
+      "SLUG": "ridge-daypack",
+      "NAME": "Ridge 28L Daypack",
+      "AVAILABLE_QUANTITY": 12,
+      "UNIT_PRICE": "89.00"
+    },
+    {
+      "ITEM_NUMBER": 1002,
+      "SLUG": "summit-tent",
+      "NAME": "Summit 2P Tent",
+      "AVAILABLE_QUANTITY": 8,
+      "UNIT_PRICE": "189.00"
+    },
+    {
+      "ITEM_NUMBER": 1003,
+      "SLUG": "alpine-shell",
+      "NAME": "Alpine Shell Jacket",
+      "AVAILABLE_QUANTITY": 20,
+      "UNIT_PRICE": "129.00"
+    },
+    {
+      "ITEM_NUMBER": 1004,
+      "SLUG": "trail-poles",
+      "NAME": "Trail Trekking Poles",
+      "AVAILABLE_QUANTITY": 15,
+      "UNIT_PRICE": "59.00"
+    },
+    {
+      "ITEM_NUMBER": 1005,
+      "SLUG": "camp-bottle",
+      "NAME": "Camp Insulated Bottle",
+      "AVAILABLE_QUANTITY": 30,
+      "UNIT_PRICE": "29.00"
+    }
+  ],
+  "foreignKeys": [
+    {
+      "tableName": "CUSTOMER_ORDER",
+      "columnName": "PAYMENT_INFO_ID_FK",
+      "referencesTable": "PAYMENT_INFO",
+      "referencesColumn": "ID"
+    },
+    {
+      "tableName": "CUSTOMER_ORDER",
+      "columnName": "SHIPPING_INFO_ID_FK",
+      "referencesTable": "SHIPPING_INFO",
+      "referencesColumn": "ID"
+    },
+    {
+      "tableName": "CUSTOMER_ORDER_LINE_ITEM",
+      "columnName": "CUSTOMER_ORDER_ID_FK",
+      "referencesTable": "CUSTOMER_ORDER",
+      "referencesColumn": "ID"
+    },
+    {
+      "tableName": "CUSTOMER_ORDER_LINE_ITEM",
+      "columnName": "ITEM_ID",
+      "referencesTable": "ITEM",
+      "referencesColumn": "ID"
+    }
+  ]
+}

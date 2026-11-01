@@ -1,7 +1,8 @@
 import { createDatabasePool } from '../services/database/pool.js';
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 
-const pool = createDatabasePool();
-try {
+export async function inspectDatabase(pool) {
   const [items] = await pool.query('SELECT ID, ITEM_NUMBER, SLUG, NAME, AVAILABLE_QUANTITY, UNIT_PRICE FROM ITEM ORDER BY ITEM_NUMBER');
   console.log('Warehouse items');
   console.table(items);
@@ -11,9 +12,16 @@ try {
     GROUP BY o.ID ORDER BY o.ID DESC LIMIT 10`);
   console.log('Latest saved orders (customer details omitted)');
   console.table(orders);
-} catch (error) {
-  console.error(`Cannot inspect the database (${error.code || 'configuration error'}). Check Docker and .env.`);
-  process.exitCode = 1;
-} finally {
-  await pool.end();
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  const pool = createDatabasePool();
+  try {
+    await inspectDatabase(pool);
+  } catch (error) {
+    console.error(`Cannot inspect the database (${error.code || 'configuration error'}). Check Docker and .env.`);
+    process.exitCode = 1;
+  } finally {
+    await pool.end();
+  }
 }
