@@ -32,6 +32,7 @@ export default function ShippingEntry() {
       <form noValidate onSubmit={submit} className="checkout-form">
         <div className="form-section-title"><FiMapPin aria-hidden="true" /><h2>Shipping details</h2><span className="card-types">UNITED STATES</span></div>
         <FormField name="name" label="Full name" {...field('name')} autoComplete="shipping name" placeholder="Alex Taylor" maxLength={100} />
+        <FormField name="email" label="Email address" type="email" {...field('email')} autoComplete="email" placeholder="alex@example.com" maxLength={200} />
         <FormField name="addressLine1" label="Address line 1" {...field('addressLine1')} autoComplete="shipping address-line1" placeholder="123 Trailhead Lane" maxLength={150} />
         <FormField name="addressLine2" label="Address line 2" {...field('addressLine2')} optional autoComplete="shipping address-line2" placeholder="Apartment, suite, etc." maxLength={150} />
         <FormField name="city" label="City" {...field('city')} autoComplete="shipping address-level2" placeholder="Columbus" maxLength={100} />

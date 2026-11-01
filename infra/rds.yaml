@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Optional Lab 8 private MySQL database in an existing VPC (creates billable resources)
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: At least two private subnets in different Availability Zones of this VPC
+  DatabaseName:
+    Type: String
+    Default: adventure_beyond
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9_]{0,63}'
+  MasterUsername:
+    Type: String
+    Default: adventure_admin
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9_]{0,15}'
+  EngineVersion:
+    Type: String
+    Default: '8.4.7'
+    AllowedPattern: '8\.4\.[0-9]+'
+    Description: Check available MySQL 8.4 minor versions in your region before deploying
+Resources:
+  ApplicationSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Lab 8 application and approved database administration hosts
+      VpcId: !Ref VpcId
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: MySQL access from the lab application security group only
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref ApplicationSecurityGroup
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Lab 8 private database subnets
+      SubnetIds: !Ref PrivateSubnetIds
+  DatabaseParameters:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: Require encrypted database connections
+      Family: mysql8.4
+      Parameters:
+        require_secure_transport: '1'
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      Engine: mysql
+      EngineVersion: !Ref EngineVersion
+      DBInstanceClass: db.t4g.micro
+      AllocatedStorage: '20'
+      StorageType: gp3
+      StorageEncrypted: true
+      MultiAZ: false
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 1
+      AutoMinorVersionUpgrade: true
+      DBName: !Ref DatabaseName
+      MasterUsername: !Ref MasterUsername
+      ManageMasterUserPassword: true
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      DBParameterGroupName: !Ref DatabaseParameters
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroup
+Outputs:
+  DatabaseHost:
+    Value: !GetAtt Database.Endpoint.Address
+  DatabaseName:
+    Value: !Ref DatabaseName
+  AdminSecretArn:
+    Description: RDS-managed administrator credentials in Secrets Manager
+    Value: !GetAtt Database.MasterUserSecret.SecretArn
+  ApplicationSecurityGroupId:
+    Value: !Ref ApplicationSecurityGroup

@@ -42,6 +42,7 @@ export default function ViewOrder() {
       <div className="review-block">
         <div className="review-heading"><h2><FiMapPin aria-hidden="true" />Ship to</h2><Link to="/purchase/shippingEntry">Edit shipping</Link></div>
         <address>{shipping.name}<br />{shipping.addressLine1}<br />{shipping.addressLine2 && <>{shipping.addressLine2}<br /></>}{shipping.city}, {shipping.state} {shipping.zip}<br />United States</address>
+        <p className="muted">{shipping.email}</p>
       </div>
       <form className="place-order-form" onSubmit={placeOrder}>
         {orderError && <div className="service-message service-error" role="alert">

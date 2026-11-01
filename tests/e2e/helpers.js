@@ -38,6 +38,7 @@ export async function fillPayment(page) {
 
 export async function fillShipping(page, apartment = '') {
   await page.getByLabel('Full name', { exact: true }).fill('Alex Taylor');
+  await page.getByLabel('Email address', { exact: true }).fill('alex@example.com');
   await page.getByLabel('Address line 1', { exact: true }).fill('123 Trailhead Lane');
   await page.getByLabel('Address line 2', { exact: false }).fill(apartment);
   await page.getByLabel('City', { exact: true }).fill('Columbus');

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { products } from '../../services/inventory/catalogue.js';
+import { products } from '../fixtures/products.js';
 import {
   normalizeCart, normalizeReceipt, changeQuantity, getTotals, getCartItems, formatMoney,
 } from '../../src/lib/shop.js';
@@ -80,10 +80,10 @@ test('payment validation rejects missing fields, expired dates, impossible month
 });
 
 test('US shipping requires an address, valid state, and ZIP while apartment is optional', () => {
-  const shipping = { name: 'Alex Taylor', addressLine1: '123 Trailhead Lane', addressLine2: '', city: 'Columbus', state: 'OH', zip: '43210' };
+  const shipping = { name: 'Alex Taylor', email: 'alex@example.com', country: 'US', addressLine1: '123 Trailhead Lane', addressLine2: '', city: 'Columbus', state: 'OH', zip: '43210' };
   assert.deepEqual(validateShipping(shipping), {});
   assert.deepEqual(validateShipping({ ...shipping, zip: '43210-1234' }), {});
-  assert.equal(Object.keys(validateShipping(emptyShipping)).length, 5);
+  assert.equal(Object.keys(validateShipping(emptyShipping)).length, 6);
   assert.ok(validateShipping({ ...shipping, state: 'NOT-A-STATE' }).state);
   assert.ok(validateShipping({ ...shipping, zip: 'abcde' }).zip);
   assert.ok(validateShipping({ ...shipping, city: '  ' }).city);

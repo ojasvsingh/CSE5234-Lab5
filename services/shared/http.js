@@ -1,3 +1,4 @@
+import { closeDatabasePool } from '../database/pool.js';
 import { createServer } from 'node:http';
 import { dispatch, errorResponse, HttpError, MAX_BODY_BYTES } from './responses.js';
 
@@ -36,7 +37,7 @@ export function listen(route, port, name) {
     console.log(`${name}: http://${process.env.HOST || '127.0.0.1'}:${port}`);
   });
   for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.once(signal, () => { server.close(); server.closeAllConnections(); });
+    process.once(signal, async () => { server.close(); server.closeAllConnections(); await closeDatabasePool(); });
   }
   return server;
 }

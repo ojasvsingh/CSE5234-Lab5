@@ -1,0 +1,42 @@
+name: adventure-beyond
+
+services:
+  db:
+    image: mysql:8.4
+    ports:
+      - "127.0.0.1:${DB_PORT:-33306}:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-adventure_beyond}
+      MYSQL_USER: ${DB_USER:-adventure}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-local-demo-password}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-local-root-password}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql --protocol=TCP -h 127.0.0.1 -u $$MYSQL_USER $$MYSQL_DATABASE -e 'SELECT 1'"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  test-db:
+    image: mysql:8.4
+    profiles: ["test"]
+    ports:
+      - "127.0.0.1:33307:3306"
+    environment:
+      MYSQL_DATABASE: adventure_beyond_test
+      MYSQL_USER: adventure_test
+      MYSQL_PASSWORD: local-test-password
+      MYSQL_ROOT_PASSWORD: local-test-root
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql --protocol=TCP -h 127.0.0.1 -u $$MYSQL_USER $$MYSQL_DATABASE -e 'SELECT 1'"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+volumes:
+  mysql-data:

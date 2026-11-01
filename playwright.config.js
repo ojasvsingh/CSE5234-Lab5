@@ -1,7 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
+import { testDatabaseEnv } from './tests/fixtures/database.js';
 
 export default defineConfig({
   testDir: './tests/e2e',
+  globalSetup: './tests/e2e/global-setup.js',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
@@ -20,6 +22,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run build && npm run preview:all',
     env: {
+      ...testDatabaseEnv,
       INVENTORY_PORT: '4311', ORDER_PORT: '4312', WEB_PORT: '4173',
       INVENTORY_SERVICE_URL: 'http://127.0.0.1:4311',
       ORDER_SERVICE_URL: 'http://127.0.0.1:4312',

@@ -1,92 +1,144 @@
-# Deploy Lab 7 to AWS
+# Optional AWS deployment for Labs 7–8
 
-The project includes [template.yaml](../template.yaml), an AWS SAM template for the Lambda and API Gateway approach described in the lab. Local and Lambda requests use the same business handlers. Node.js is the alternative technology stack used by this project.
+**These files are prepared for deployment; they do not prove that anything has been deployed.** Local development and tests create no AWS resources. Lab 8 explicitly asks for an RDS database, so actual RDS setup and verification remain necessary for that part of the assignment.
 
-The template creates two Lambda functions, two API Gateway REST APIs, their Lambda execution roles and invocation permissions, and `dev` stages. The order Lambda receives the inventory API's base URL through `INVENTORY_SERVICE_URL` and calls it over HTTP. No database or real payment service is created.
+There are two templates:
 
-## 1. Choose the course AWS account
+- [infra/rds.yaml](../infra/rds.yaml): a private RDS MySQL instance, database subnet/parameter groups, two security groups in an **existing VPC**, and an RDS-managed administrator secret in Secrets Manager.
+- [template.yaml](../template.yaml): two Node.js Lambda functions, two API Gateway REST APIs, execution roles, and `dev` stages. The functions connect to the existing database.
 
-Install the AWS CLI and AWS SAM CLI using the official instructions linked below. Sign into the account you intend to use for the course. Keep credentials in your AWS profile, never in the repository or frontend `.env` file.
+RDS, storage/backups, Secrets Manager, API Gateway, Lambda, and any NAT gateway can incur charges. No free-tier eligibility is assumed. The templates do not create a VPC, NAT gateway, or administration machine.
 
-Before deploying, verify the account and region:
+## 1. Choose the account and network
+
+Install the AWS CLI and SAM CLI using the official links below. Use the account approved for the course:
 
 ```sh
 aws sts get-caller-identity --profile school
 aws configure get region --profile school
 ```
 
-`school` is an example profile name. Replace it with your intended profile. If it uses SSO and the session has expired, run `aws sso login --profile school` first. Course accounts may restrict IAM role creation; this template requires permission to create Lambda roles and API Gateway resources. If your course requires an existing execution role, set `Role` on both functions to that approved role ARN before deployment.
+Replace `school` with your actual profile. Renew its login if needed. Do not put AWS credentials into this repository.
 
-## 2. Build and deploy
+You need an existing VPC with at least **two private subnets in different Availability Zones**. The RDS template keeps the database private. The Lambda subnets must have outbound internet access through an existing NAT route because the order Lambda calls the inventory's public API Gateway URL over HTTPS. Putting Lambda in a public subnet alone does not provide internet access.
 
-From the project root, after running the local tests:
+Also identify an approved way to run database initialization **inside that VPC**, such as an existing administration machine accessed through Systems Manager. It needs the application security group and a route to RDS. A normal laptop cannot directly reach this private RDS endpoint. Do not make the database public simply to bypass this requirement.
 
-The template uses `nodejs22.x`. For a native `sam build`, use Node.js 22 locally. If your local Node major version differs, use `sam build --use-container` with Docker running, or switch to Node.js 22 for the build.
+## 2. Create the database when deployment is authorized
+
+Validate the files without creating a stack:
 
 ```sh
-sam validate --lint --profile school
-sam build
+sam validate --lint --template-file template.yaml --profile school
+aws cloudformation validate-template --template-body file://infra/rds.yaml --profile school
+```
+
+The RDS template defaults to MySQL `8.4.7`. Before deployment, check which 8.4 minor versions and instance classes are available in the chosen region, and change `EngineVersion` if necessary:
+
+```sh
+aws rds describe-db-engine-versions --engine mysql --query 'DBEngineVersions[?starts_with(EngineVersion, `8.4.`)].EngineVersion' --profile school
+```
+
+In the CloudFormation console for that account and region, create a stack from `infra/rds.yaml`. A suggested name is `adventure-beyond-lab8-db`. Supply:
+
+| Parameter | Value |
+| --- | --- |
+| `VpcId` | The approved VPC |
+| `PrivateSubnetIds` | Two or more private subnets in different Availability Zones |
+| `DatabaseName` | `adventure_beyond` |
+| `MasterUsername` | `adventure_admin`, or an approved administrator name |
+| `EngineVersion` | A supported MySQL 8.4 minor version in this region |
+
+RDS generates the administrator password and manages it in Secrets Manager. The account needs permission for this integration. Do not share credentials in screenshots or commits. Review the resources before creation. The database uses a single `db.t4g.micro` instance, 20 GiB of encrypted gp3 storage, one day of automated backups, and TLS-only database connections.
+
+After the stack reports success, record these outputs: `DatabaseHost`, `DatabaseName`, `ApplicationSecurityGroupId`, and `AdminSecretArn`. Retrieve the administrator credentials from that secret through the AWS console when initializing the database. Attach the application security group to the approved administration machine used for the next step. Its ingress rule allows database access only from members of that group, on port 3306.
+
+## 3. Initialize and create an application user
+
+On the approved machine inside the VPC, clone the repo, run `npm ci`, and create an untracked `.env` with the administrator connection:
+
+```dotenv
+DB_HOST=YOUR_RDS_ENDPOINT
+DB_PORT=3306
+DB_NAME=adventure_beyond
+DB_USER=adventure_admin
+DB_PASSWORD=YOUR_PRIVATE_ADMIN_PASSWORD
+DB_SSL=rds
+```
+
+Use:
+
+```sh
+npm run db:init
+npm run db:inspect
+```
+
+The same SQL files used locally now create the five RDS tables and seed the products. `DB_SSL=rds` uses the `aws-ssl-profiles` RDS CA bundle and verifies both the certificate and database hostname. For another MySQL server, `DB_SSL=true` supports an optional `DB_SSL_CA` file. Do not disable certificate verification.
+
+Using an encrypted MySQL administration session, create a separate application user with a new password:
+
+```sql
+CREATE USER 'adventure_app'@'%' IDENTIFIED BY 'REPLACE_WITH_A_NEW_PRIVATE_PASSWORD';
+GRANT SELECT ON adventure_beyond.ITEM TO 'adventure_app'@'%';
+GRANT INSERT ON adventure_beyond.CUSTOMER_ORDER TO 'adventure_app'@'%';
+GRANT INSERT ON adventure_beyond.CUSTOMER_ORDER_LINE_ITEM TO 'adventure_app'@'%';
+GRANT INSERT ON adventure_beyond.PAYMENT_INFO TO 'adventure_app'@'%';
+GRANT INSERT ON adventure_beyond.SHIPPING_INFO TO 'adventure_app'@'%';
+```
+
+The application only needs item reads and order inserts. Keep the administrator connection for schema changes and inspection. Do not run `db:init` or `db:inspect` with the restricted application user. Replace the backend's `DB_USER`/`DB_PASSWORD` with the application credentials for normal operation.
+
+## 4. Deploy the microservices, if required
+
+RDS data integration can be tested by running the existing Node services on the approved VPC machine. If also deploying the Lab 7 Lambda/API Gateway tier, use the root SAM template.
+
+From the project root:
+
+```sh
+sam build --use-container
 sam deploy --guided --profile school
 ```
 
-Use `adventure-beyond-lab7` as the stack name, choose your intended region, and allow the template to create its Lambda execution roles. The APIs deliberately allow unauthenticated requests for the classroom storefront. Review the resources shown by SAM before confirming deployment. API requests and Lambda execution can incur AWS usage charges.
+Docker must be running for the container build. The template uses Node.js 22. With Node.js 22 installed locally, native `sam build` is also available. The backend has its own `services/package.json` and lockfile so SAM includes the MySQL driver.
 
-After deployment succeeds, SAM prints these outputs:
+Use `adventure-beyond-lab8-api` as a new stack name, or deliberately update the group's existing API stack. Supply the database host/name, application username/password, application security group ID, and private subnet IDs. Use the **same VPC** as RDS and the subnets with NAT egress. Allow the Lambda execution roles to be created. Their VPC policy permits network interface management.
 
-- **InventoryApiUrl**: the inventory base URL, including `/dev`.
-- **OrderApiUrl**: the order base URL, including `/dev`.
+Do **not** save secret parameter values to `samconfig.toml` or a shared command history. Answer no when asked to save guided deployment arguments containing a password. The repo ignores SAM config files as an additional guard. Lambda receives the password as an encrypted-at-rest environment variable; change that parameter and redeploy if the application password is rotated.
 
-Deployment status is established by the actual CloudFormation result, not just template validation. `aws cloudformation validate-template --template-body file://template.yaml` can perform a basic template check with the AWS CLI, but does not deploy the services or validate their runtime behavior.
+Review the change set before applying it. The APIs are unauthenticated classroom endpoints. The template configures CORS on success/error responses; it does not enable request-body tracing.
 
-## 3. Point the frontend at the deployed APIs
-
-Copy [.env.example](../.env.example) to `.env.local` in the project root and paste the two outputs:
+The outputs are `InventoryApiUrl` and `OrderApiUrl`. Put them in the frontend's untracked `.env.local`:
 
 ```dotenv
 VITE_INVENTORY_API_URL=https://YOUR_INVENTORY_API.execute-api.YOUR_REGION.amazonaws.com/dev
 VITE_ORDER_API_URL=https://YOUR_ORDER_API.execute-api.YOUR_REGION.amazonaws.com/dev
 ```
 
-Do not append `/inventory-management/inventory` or `/order-processing/order`: the frontend adds those paths. These variables contain public endpoint addresses, not credentials.
+Include `/dev` but no endpoint path. Restart `npm run dev:frontend`. For static hosting, set these values before `npm run build`, and configure the host to serve `index.html` for client-side routes. Database credentials must never use the `VITE_` prefix.
 
-Stop and restart the frontend:
+## 5. Verify RDS integration
 
-```sh
-npm run dev:frontend
-```
+1. List inventory, look up an ID, and search by name using the calls in [API.md](API.md).
+2. Edit a product in RDS and confirm that the next API call and browser refresh show the change. Restore the sample data afterward.
+3. Submit [examples/order.json](../examples/order.json). Expect `201`, `orderId`, `status: "New"`, and a confirmation number.
+4. From the administration connection, query all four order-related tables and compare the saved ID, quantities, and total with the API response.
+5. Request more than the current stock. Expect `409` and no new order rows.
+6. Run `database/003-manual-check.sql` in one MySQL session to demonstrate the requested manual inserts.
+7. Capture the RDS instance status, table/query results, and browser confirmation without exposing passwords or real customer information.
 
-Open the local website. It now talks directly to the AWS APIs. The browser's Network panel should show inventory GET requests and an order POST to the invoke URLs. You do not need the local backend processes in this mode. If deploying the frontend to a static host, set these variables **before** `npm run build`, because Vite includes their values in the build.
+Template validation checks syntax and resource properties. Only these live checks establish that RDS, networking, permissions, and APIs work together in the actual account.
 
-To switch back to local services, remove/comment the two values in `.env.local`, restart, and run `npm run dev`.
+## 6. Cleanup after the course demo
 
-## 4. Verify the deployed behavior
+Delete only the lab stacks you actually created. Remove the API stack before the RDS stack so Lambda can release its VPC network interfaces. The RDS template uses `DeletionPolicy: Snapshot` and `UpdateReplacePolicy: Snapshot`: deletion or replacement preserves a database snapshot that may continue to incur storage charges. Inspect retained snapshots and delete them only when the group's data is no longer needed.
 
-Use the examples in [API.md](API.md), replacing each local base URL with the corresponding AWS output. Verify:
-
-1. List all inventory items.
-2. Look up `ridge-daypack` by ID.
-3. Search names with `?name=Insulated%20Bottle`.
-4. POST [examples/order.json](../examples/order.json): expect `201` and a confirmation.
-5. Request 13 daypacks: expect `409` and available quantity 12.
-6. Complete an order from the browser and confirm that its displayed number matches the POST response.
-
-API Gateway passes name filters in `event.queryStringParameters`; item IDs are also available in `event.pathParameters`. The adapter reads the actual request path for ID routing and `queryStringParameters` for filters. The lab walkthrough's reference to `pathParameters` for query strings should not be copied literally.
-
-CORS is configured on both APIs and on Lambda success/error responses. If the browser reports a CORS problem, check the invoke URL, stage, request method, and Lambda logs. Do not enable request-body/data tracing for sample payment payloads.
-
-## 5. Cleanup
-
-When the group no longer needs this deployed stack:
-
-```sh
-sam delete --stack-name adventure-beyond-lab7 --profile school
-```
-
-Review the stack name, account, region, and deletion prompt before continuing. Delete only this lab's stack. SAM may also prompt about packaged artifacts. Lambda-created CloudWatch log groups can remain after stack deletion and can be removed separately when no longer needed.
+The templates do not own any existing VPC, NAT gateway, or administration machine. Their resources and costs must be reviewed separately. Deleting a CloudFormation stack does not prove the account has no remaining charges.
 
 ## Official references
 
+- [MySQL versions supported by RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.VersionMgmt.html)
+- [RDS DBInstance CloudFormation properties](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-rds-dbinstance.html)
+- [Lambda VPC internet access](https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc-internet.html)
+- [Using Lambda with RDS](https://docs.aws.amazon.com/lambda/latest/dg/services-rds.html)
 - [Install AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
-- [SAM API resource and supported properties](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-api.html)
-- [API Gateway Lambda proxy request and response formats](https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html)
-- [SAM CORS configuration](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-api-corsconfiguration.html)
+- [mysql2 connections and TLS](https://sidorares.github.io/node-mysql2/docs/examples/connections/create-pool)

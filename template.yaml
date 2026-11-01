@@ -1,6 +1,26 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Adventure Beyond Lab 7 inventory and order microservices
+Description: Adventure Beyond Labs 7-8 microservices connected to an existing MySQL database
+Parameters:
+  DatabaseHost:
+    Type: String
+    Description: RDS endpoint hostname (no protocol or port)
+  DatabaseName:
+    Type: String
+    Default: adventure_beyond
+  DatabaseUser:
+    Type: String
+    Description: Database application user
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+  ApplicationSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security group permitted to reach RDS on port 3306
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Private subnets in the RDS VPC with NAT egress for the inventory API call
 Globals:
   Function:
     Runtime: nodejs22.x
@@ -10,6 +30,16 @@ Globals:
     Environment:
       Variables:
         ALLOWED_ORIGIN: '*'
+        DB_HOST: !Ref DatabaseHost
+        DB_PORT: '3306'
+        DB_NAME: !Ref DatabaseName
+        DB_USER: !Ref DatabaseUser
+        DB_PASSWORD: !Ref DatabasePassword
+        DB_SSL: rds
+    VpcConfig:
+      SecurityGroupIds:
+        - !Ref ApplicationSecurityGroupId
+      SubnetIds: !Ref PrivateSubnetIds
 Resources:
   InventoryApi:
     Type: AWS::Serverless::Api
@@ -49,6 +79,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: inventory/handler.handler
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
       Events:
         ListInventory:
           Type: Api
@@ -72,6 +104,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: orders/handler.handler
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
       Environment:
         Variables:
           INVENTORY_SERVICE_URL: !Sub https://${InventoryApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/dev

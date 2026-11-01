@@ -6,6 +6,8 @@ node_modules/
 .env.*
 !.env.example
 .aws-sam/
+samconfig.toml
+samconfig.yaml
 
 # Build output (React)
 build/

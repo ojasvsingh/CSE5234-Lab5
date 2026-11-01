@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Adventure Beyond storefront with inventory and order microservices for CSE 5234 Labs 5–7",
+  "description": "Adventure Beyond storefront with inventory and order microservices for CSE 5234 Labs 5–8",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
@@ -19,7 +19,14 @@
     "start:inventory": "node services/inventory/server.js",
     "start:orders": "node services/orders/server.js",
     "preview:all": "node scripts/dev.mjs --preview",
-    "test:api": "node --test tests/api/*.test.js"
+    "test:api": "node --test tests/api/*.test.js",
+    "postinstall": "npm ci --prefix services",
+    "db:up": "docker compose up -d --wait db",
+    "db:stop": "docker compose stop db",
+    "db:init": "node scripts/database.mjs",
+    "db:test:up": "docker compose --profile test up -d --wait test-db",
+    "test:unit": "node --test tests/unit/*.test.js",
+    "db:inspect": "node scripts/inspect-database.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.3.0",
