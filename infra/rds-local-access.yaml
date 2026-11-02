@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Lab 8 RDS MySQL for local microservices, restricted to one client IPv4 address
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Public subnets in at least two Availability Zones, with an internet gateway route
+  ClientCidr:
+    Type: String
+    AllowedPattern: '([0-9]{1,3}\.){3}[0-9]{1,3}/32'
+    ConstraintDescription: Supply exactly one trusted public IPv4 address followed by /32
+  DatabaseName:
+    Type: String
+    Default: adventure_beyond
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9_]{0,63}'
+  DatabaseIdentifier:
+    Type: String
+    Default: adventure-beyond-lab8
+    AllowedPattern: '[a-z][a-z0-9-]{0,62}'
+  EngineVersion:
+    Type: String
+    Default: '8.4.11'
+    AllowedPattern: '8\.4\.[0-9]+'
+  InstanceClass:
+    Type: String
+    Default: db.t4g.micro
+    AllowedValues:
+      - db.t4g.micro
+      - db.t3.micro
+Resources:
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: MySQL access from one trusted local development address
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: !Ref ClientCidr
+          Description: Local Lab 8 microservices over TLS
+      Tags:
+        - Key: Project
+          Value: CSE5234-Lab8
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Lab 8 database subnets
+      SubnetIds: !Ref SubnetIds
+  DatabaseParameters:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: Require TLS for all Lab 8 database clients
+      Family: mysql8.4
+      Parameters:
+        require_secure_transport: '1'
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Ref DatabaseIdentifier
+      Engine: mysql
+      EngineVersion: !Ref EngineVersion
+      DBInstanceClass: !Ref InstanceClass
+      AllocatedStorage: '20'
+      StorageType: gp3
+      StorageEncrypted: true
+      MultiAZ: false
+      PubliclyAccessible: true
+      BackupRetentionPeriod: 1
+      AutoMinorVersionUpgrade: true
+      DBName: !Ref DatabaseName
+      MasterUsername: adventure_admin
+      ManageMasterUserPassword: true
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      DBParameterGroupName: !Ref DatabaseParameters
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroup
+      Tags:
+        - Key: Project
+          Value: CSE5234-Lab8
+        - Key: Purpose
+          Value: Coursework-demo
+Outputs:
+  DatabaseHost:
+    Value: !GetAtt Database.Endpoint.Address
+  DatabasePort:
+    Value: !GetAtt Database.Endpoint.Port
+  DatabaseIdentifier:
+    Value: !Ref Database
+  DatabaseName:
+    Value: !Ref DatabaseName
+  DatabaseSecurityGroupId:
+    Value: !Ref DatabaseSecurityGroup
+  AdminSecretArn:
+    Description: Retrieve privately; never include secret values in screenshots or the repository
+    Value: !GetAtt Database.MasterUserSecret.SecretArn

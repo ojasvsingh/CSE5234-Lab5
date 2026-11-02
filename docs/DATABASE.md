@@ -1,6 +1,6 @@
 # Lab 8 database guide
 
-Lab 8 replaces the hardcoded inventory with MySQL and saves customer orders. Start the database and application using the root README. These examples use the included local database; use fictional data.
+Lab 8 replaces the hardcoded inventory with MySQL and saves customer orders. Start the database and application using the root README. These examples use the included local database; use fictional data. For the verified RDS deployment, use [RDS-LOCAL.md](RDS-LOCAL.md); `npm run rds:inspect` and `npm run rds:manual` perform the equivalent cloud checks.
 
 ## Inspect the data
 
@@ -97,7 +97,7 @@ Stock is checked, not decremented or reserved. A network failure after a commit 
 
 | Lab 8 objective | Where to demonstrate it |
 | --- | --- |
-| Create a relational database using AWS RDS | **Pending actual AWS deployment.** Prepared files and instructions are in `docs/AWS.md` |
+| Create a relational database using AWS RDS | Deployed and verified on November 1, 2026; see [RDS evidence](LAB8-VERIFICATION.md#live-rds-verification) |
 | Create and populate warehouse schema | `001-schema.sql`, `002-seed.sql`, and `npm run db:inspect` |
 | Remove hardcoded microservice inventory | `services/database/items.js`; change a row and refresh the shop |
 | Store orders and related records | Submit an order, then query all four related tables |

@@ -4,7 +4,9 @@ Adventure Beyond is our three-person group's outdoor gear store for **CSE 5234 L
 
 **Lab 8 adds a MySQL database.** The inventory service reads products from the database. The order service checks stock, saves the order and its related records, and then returns a confirmation number. Orders remain after restarting the application or the local database.
 
-This is a classroom demo. Use the sample customer and payment details below. It does not charge cards, ship products, or send emails. **AWS deployment files are included, but no cloud deployment is claimed.** The assignment's RDS requirement still needs an actual AWS deployment and verification.
+This is a classroom demo. Use the sample customer and payment details below. It does not charge cards, ship products, or send emails.
+
+**Lab 8 RDS deployment was verified on November 1, 2026.** The group's `school` account has an RDS MySQL database in `us-east-1`; the local website and microservices read and write that database. Desktop and phone orders were matched to saved SQL records. See [the verification record and screenshots](docs/LAB8-VERIFICATION.md) and [the RDS setup guide](docs/RDS-LOCAL.md). The steps below use a separate local Docker database so every teammate can develop without AWS access.
 
 ## 1. Install and start
 
@@ -156,7 +158,8 @@ All pages share the navigation, footer, and bag, with phone layouts. The Contact
 | Shopping/checkout state | [src/context/ShopContext.jsx](src/context/ShopContext.jsx) |
 | Pages and styling | [src/pages](src/pages), [src/styles.css](src/styles.css), [src/site.css](src/site.css) |
 | Local database and startup | [compose.yaml](compose.yaml), [scripts/dev.mjs](scripts/dev.mjs) |
-| Optional AWS deployment | [infra/rds.yaml](infra/rds.yaml), [template.yaml](template.yaml), [docs/AWS.md](docs/AWS.md) |
+| Local services connected to RDS | [infra/rds-local-access.yaml](infra/rds-local-access.yaml), [scripts/rds.mjs](scripts/rds.mjs), [docs/RDS-LOCAL.md](docs/RDS-LOCAL.md) |
+| Optional AWS-hosted services | [infra/rds.yaml](infra/rds.yaml), [template.yaml](template.yaml), [docs/AWS.md](docs/AWS.md) |
 
 Edit live products with SQL, then refresh the browser. Editing the seed file does not overwrite existing rows. Backend code changes require restarting `npm run dev`.
 
@@ -194,7 +197,17 @@ Open `http://127.0.0.1:4173`. These commands do not deploy to AWS.
 
 ## 7. AWS and common problems
 
-Lab 8 explicitly requires **Amazon RDS**. Local MySQL proves the data integration, but does not complete that cloud requirement. [docs/AWS.md](docs/AWS.md) explains the prepared RDS and Lambda configurations, initialization, networking, verification, and cleanup. Creating AWS resources is a separate action and can incur charges.
+Lab 8 explicitly requires **Amazon RDS**. [docs/RDS-LOCAL.md](docs/RDS-LOCAL.md) explains how to run this website and its two services on your computer while using an RDS database. This is the simplest cloud demonstration for Lab 8.
+
+After the authorized RDS setup has saved a private `.env.rds`, stop the regular app and use:
+
+```sh
+npm run dev:rds
+```
+
+Open the same `http://127.0.0.1:5173` address. In another terminal, `npm run rds:inspect` reads saved cloud orders, and `npm run rds:manual` runs the manual SQL example. These administration commands need an active AWS login. To return to local MySQL, stop the app and use `npm run db:up` followed by `npm run dev`.
+
+**Do not copy `.env.rds` into Git or group messages.** Each teammate needs authorized credentials and network access. [docs/AWS.md](docs/AWS.md) covers the separate option of hosting the microservices in AWS too. Resource creation can incur charges; stopping the website does not stop RDS. See the RDS guide for stopping and cleanup.
 
 | Problem | What to do |
 | --- | --- |
@@ -210,3 +223,5 @@ Lab 8 explicitly requires **Amazon RDS**. Local MySQL proves the data integratio
 | Browser missing | Run `npx playwright install chromium` |
 | Seed changes do not appear | Setup preserves existing products; update the database row explicitly |
 | AWS API cannot reach RDS | Check its VPC/subnets/security groups, credentials, and TLS; see the AWS guide |
+| Local app cannot reach RDS | Check that RDS is available, `.env.rds` matches, and its security group allows your current public IP |
+| RDS inspection fails after SSO expires | Run `aws sso login --profile school`, then retry `npm run rds:inspect` |
