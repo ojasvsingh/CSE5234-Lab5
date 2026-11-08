@@ -2,7 +2,7 @@
 
 Lab 9 has two ideas: **wait for an answer when it is needed now** (inventory and payment), and **send a message for work that can happen later** (shipping).
 
-The local implementation is working. The AWS configuration is implemented and statically checked, but **live Lab 9 AWS deployment and verification are pending renewed school-account login**. This document does not claim that EventBridge/SNS are already running.
+**Local and AWS integration were verified on November 8, 2026.** The school's `adventure-beyond-lab9` stack contains the payment/shipping APIs and functions, EventBridge rule, SNS subscription, and invocation permissions. Two browser orders reached the shipping database through that route, including repeated-event checks. See [the dated evidence and post-demo status](LAB9-VERIFICATION.md); deployed resources do not imply RDS is currently running.
 
 ## Requirement checklist
 
@@ -131,9 +131,10 @@ Use the authorized `school` profile, account `358148451783`. The deployment scri
    ```sh
    npm run lab9:inspect:aws
    npm run lab9:capture:aws
+   npm run lab9:audit:aws
    ```
 
-   Cloud capture saves evidence under `docs/screenshots/lab9-aws/` only after it matches the browser order to the remote payment and shipment records. Also capture the EventBridge rule's pattern/target, SNS subscription, shipping Lambda invocation, and database/query results from AWS. Do not include `.env` files, secrets, or real customer data.
+   Cloud capture saves evidence under `docs/screenshots/lab9-aws/` only after it matches the browser order to the remote payment and shipment records. The audit then checks the live rule/target, subscription, Lambda permission and invocation logs, empty failure queue, database isolation, and stock rejection. It saves sanitized JSON and a readable verification image generated from AWS CLI results. These are labeled as CLI/query evidence, not AWS Console screenshots. Do not include `.env` files, secrets, or real customer data.
 
 7. Read the `ShippingFunctionName`, `ShippingTopicArn`, `ShippingRuleArn`, and `DeliveryFailuresUrl` outputs from the Lab 9 stack. Confirm the rule is enabled, SNS subscription is confirmed, and the failure queue is empty. Inspect Lambda errors if a message is published but no shipment appears.
 

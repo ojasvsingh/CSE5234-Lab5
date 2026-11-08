@@ -29,6 +29,7 @@
     "lab9:inspect:aws": "node scripts/lab9.mjs inspect --aws",
     "lab9:capture": "node scripts/capture-lab9.mjs",
     "lab9:capture:aws": "node scripts/capture-lab9.mjs --aws",
+    "lab9:audit:aws": "node scripts/audit-lab9-aws.mjs",
     "preview:all": "node scripts/dev.mjs --preview",
     "test:api": "node --test tests/api/*.test.js",
     "postinstall": "npm ci --prefix services",

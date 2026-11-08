@@ -6,7 +6,7 @@ Adventure Beyond is our three-person group's outdoor gear store for **CSE 5234 L
 
 This is a classroom demo. Use the sample customer and payment details below. It does not charge cards, ship products, or send emails.
 
-**Local Lab 9 is implemented and tested. AWS deployment is pending renewed school-account login.** The local event transport is a development simulation; it does not satisfy the assignment's AWS EventBridge/SNS requirement by itself. The AWS templates and deployment commands are ready in [the Lab 9 guide](docs/LAB9.md). See [current checks and screenshots](docs/LAB9-VERIFICATION.md). The [November 1 Lab 8 RDS evidence](docs/LAB8-VERIFICATION.md) records that earlier deployment, not Lab 9 deployment.
+**Lab 9 AWS deployment was verified on November 8, 2026.** Desktop and mobile orders reached the payment Lambda, existing RDS database, EventBridge, SNS, and shipping Lambda. Repeated messages produced no duplicate shipments. See [the verification record and screenshots](docs/LAB9-VERIFICATION.md) and [the deployment guide](docs/LAB9.md). The cloud demo requires RDS to be running; the local steps below work without AWS and use a clearly labeled event-transport simulation.
 
 ## 1. Install and start
 
@@ -225,7 +225,9 @@ npm run lab9:deploy
 npm run dev:aws
 ```
 
-`lab9:setup` creates two logical databases and restricted users, preserving existing store data. `lab9:deploy` creates cloud resources and can incur charges. It is restricted to the group's `school` account. `dev:aws` uses the same website address and keeps the event publisher running. In another terminal, use `npm run lab9:inspect:aws` or `npm run lab9:capture:aws`. To return to local MySQL, stop the app and run `npm run db:up` and `npm run dev`.
+`lab9:setup` creates two logical databases and restricted users, preserving existing store data. `lab9:deploy` creates/updates cloud resources and can incur charges. It is restricted to the group's `school` account. The group's stacks already exist; for another demonstration on the configured laptop, renew school login, start RDS, and use `dev:aws`. Deploy again only when updating the cloud code/configuration.
+
+`dev:aws` uses the same website address and keeps the event publisher running. In another terminal, use `npm run lab9:inspect:aws`, or run `npm run lab9:capture:aws` followed by `npm run lab9:audit:aws` to refresh the evidence. Capture creates two additional fictional demo orders. To return to local MySQL, stop the app and run `npm run db:up` and `npm run dev`.
 
 **Do not copy `.env.lab9`, `.env.rds`, or `.lab9-build` into Git or group messages.** Each teammate needs authorized credentials and network access. Stopping the website stops its publisher but does not stop RDS or remove AWS resources. [docs/AWS.md](docs/AWS.md) covers the separate option of hosting inventory/order and a scheduled publisher in AWS too; that option needs additional network egress.
 
