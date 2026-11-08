@@ -1,6 +1,5 @@
 import { createOrderRepository } from '../database/orders.js';
 import { buildReceipt } from './receipt.js';
-import { buildShipmentEvent } from './shipment.js';
 import { HttpError, json, parseJson } from '../shared/responses.js';
 import { emptyPayment, emptyShipping, validatePayment, validateShipping } from '../shared/validation.js';
 import { lambdaAdapter } from '../shared/lambda.js';
@@ -87,7 +86,7 @@ async function requestPayment(payment, { paymentUrl, timeoutMs, fetchPayment }) 
   try { data = await response.json(); } catch {
     throw new HttpError(503, 'PAYMENT_UNAVAILABLE', 'We could not process payment. Your order was not confirmed. Please try again.');
   }
-  if (!data || typeof data.confirmationToken !== 'string' || !/^PAY-[A-F0-9]{8}$/.test(data.confirmationToken)) {
+  if (!data || typeof data.confirmationToken !== 'string' || !/^PAY-[A-F0-9]{32}$/.test(data.confirmationToken)) {
     throw new HttpError(503, 'PAYMENT_UNAVAILABLE', 'We could not process payment. Your order was not confirmed. Please try again.');
   }
   return data.confirmationToken;
@@ -101,7 +100,6 @@ export function createOrderRoute({
   fetchInventory = fetch,
   fetchPayment = fetch,
   repository = createOrderRepository(),
-  publishShipment = async () => {},
 } = {}) {
   return async (request) => {
     if (request.path === '/health' && request.method === 'GET') return json(200, { service: 'order-processing', status: 'ok' });
@@ -112,9 +110,9 @@ export function createOrderRoute({
     buildReceipt(order.quantities, catalogue);
     await repository.ensureAvailable(order.quantities);
     const paymentToken = await requestPayment(order.payment, { paymentUrl, timeoutMs, fetchPayment });
-    const saved = await repository.save({ quantities: order.quantities, shipping: order.shipping, paymentToken });
-    // EventBridge publishes this later. Do not call the shipping service directly.
-    await publishShipment(buildShipmentEvent({ shipping: order.shipping, receipt: saved, businessId }));
+    const saved = await repository.save({ quantities: order.quantities, shipping: order.shipping, paymentToken, businessId });
+    // The worker publishes the committed outbox entry; checkout never waits
+    // for the carrier and never calls its HTTP endpoint directly.
     return json(201, saved);
   };
 }

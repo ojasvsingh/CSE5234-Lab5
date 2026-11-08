@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@aws-sdk/client-eventbridge": "3.1164.0",
+    "@aws-sdk/credential-providers": "3.1164.0",
     "aws-ssl-profiles": "1.1.2",
     "mysql2": "3.24.6"
   }

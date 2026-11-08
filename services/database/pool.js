@@ -36,6 +36,20 @@ export function createDatabasePool(env = process.env) {
   return mysql.createPool(databaseConfig(env));
 }
 
+// Partners never inherit the storefront's database credentials.
+export function partnerDatabaseEnv(kind, env = process.env) {
+  const prefix = kind.toUpperCase();
+  return {
+    DB_HOST: env[`${prefix}_DB_HOST`] || '127.0.0.1',
+    DB_PORT: env[`${prefix}_DB_PORT`] || '33306',
+    DB_NAME: env[`${prefix}_DB_NAME`] || `adventure_${kind}`,
+    DB_USER: env[`${prefix}_DB_USER`] || `adventure_${kind}`,
+    DB_PASSWORD: env[`${prefix}_DB_PASSWORD`] || `local-${kind}-password`,
+    DB_SSL: env[`${prefix}_DB_SSL`] || 'false',
+    DB_SSL_CA: env[`${prefix}_DB_SSL_CA`],
+  };
+}
+
 // Connects without selecting a database so setup can create one.
 export function createServerConnection(env = process.env) {
   const { host, port, user, password, ssl, connectTimeout } = databaseConfig(env);

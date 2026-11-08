@@ -1,10 +1,10 @@
-import { randomBytes } from 'node:crypto';
-import { databaseUnavailable, execute, createDatabasePool } from './pool.js';
+import { createHash, randomBytes } from 'node:crypto';
+import { databaseUnavailable, execute, createDatabasePool, partnerDatabaseEnv } from './pool.js';
 import { HttpError } from '../shared/responses.js';
 
 let pool;
 export function getShippingPool() {
-  return pool ||= createDatabasePool({ ...process.env, DB_NAME: process.env.SHIPPING_DB_NAME || 'adventure_shipping' });
+  return pool ||= createDatabasePool(partnerDatabaseEnv('shipping'));
 }
 export async function closeShippingPool() {
   if (pool) await pool.end();
@@ -14,15 +14,25 @@ export async function closeShippingPool() {
 export function createShippingRepository(poolProvider = getShippingPool) {
   return {
     async save(shipment) {
-      const token = `SHP-${randomBytes(4).toString('hex').toUpperCase()}`;
-      const { address } = shipment;
+      const { requestId, businessId, address, packetCount, packetWeightsPounds } = shipment;
+      const hash = createHash('sha256').update(JSON.stringify({ businessId, address, packetCount, packetWeightsPounds })).digest('hex');
+      const token = `SHP-${randomBytes(16).toString('hex').toUpperCase()}`;
       try {
-        await execute(poolProvider(),
-          `INSERT INTO SHIPMENT (BUSINESS_ID, RECIPIENT_NAME, ADDRESS1, ADDRESS2, CITY, STATE, COUNTRY, POSTAL_CODE, EMAIL, PACKET_COUNT, WEIGHT_POUNDS, CONFIRMATION_TOKEN)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [shipment.businessId, address.name, address.addressLine1, address.addressLine2, address.city, address.state,
-            address.country, address.zip, address.email, shipment.packetCount, shipment.weightPounds.toFixed(2), token]);
-        return { confirmationToken: token };
+        try {
+          await execute(poolProvider(), `INSERT INTO SHIPMENT
+            (REQUEST_ID, PAYLOAD_HASH, BUSINESS_ID, RECIPIENT_NAME, ADDRESS1, ADDRESS2, CITY, STATE, COUNTRY, POSTAL_CODE, EMAIL, PACKET_COUNT, PACKET_WEIGHTS, CONFIRMATION_TOKEN)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [requestId, hash, businessId, address.name, address.addressLine1, address.addressLine2, address.city,
+            address.state, address.country, address.zip, address.email, packetCount, JSON.stringify(packetWeightsPounds), token]);
+          return { confirmationToken: token };
+        } catch (error) {
+          if (error.code !== 'ER_DUP_ENTRY') throw error;
+          const [rows] = await execute(poolProvider(),
+            'SELECT CONFIRMATION_TOKEN, PAYLOAD_HASH FROM SHIPMENT WHERE REQUEST_ID = ?', [requestId]);
+          if (!rows.length) throw error;
+          if (rows[0].PAYLOAD_HASH !== hash) throw new HttpError(409, 'SHIPMENT_CONFLICT', 'This request ID already belongs to a different shipment.');
+          return { confirmationToken: rows[0].CONFIRMATION_TOKEN };
+        }
       } catch (error) {
         if (error instanceof HttpError) throw error;
         throw databaseUnavailable();

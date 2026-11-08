@@ -1,8 +1,11 @@
-// One packet per line item, regardless of quantity. Each packet is 1.0 lb.
-export const PACKET_WEIGHT_POUNDS = 1;
+// One packet per line, with the weight of every unit on that line.
+export const ITEM_WEIGHT_POUNDS = 1;
 
-export function buildShipmentEvent({ shipping, receipt, businessId = process.env.STORE_BUSINESS_ID || 'AB-STORE-1001' }) {
+export function buildShipmentEvent({ shipping, receipt, requestId, businessId = process.env.STORE_BUSINESS_ID || 'AB-STORE-1001' }) {
   return {
+    schemaVersion: 1,
+    requestId,
+    orderId: receipt.orderId,
     businessId,
     address: {
       name: shipping.name,
@@ -15,6 +18,6 @@ export function buildShipmentEvent({ shipping, receipt, businessId = process.env
       zip: shipping.zip,
     },
     packetCount: receipt.items.length,
-    weightPounds: PACKET_WEIGHT_POUNDS,
+    packetWeightsPounds: receipt.items.map(item => item.quantity * ITEM_WEIGHT_POUNDS),
   };
 }

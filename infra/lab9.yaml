@@ -1,0 +1,269 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Lab 9 payment and shipping APIs, EventBridge routing, and SNS delivery; reuses existing MySQL
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnets in the existing database VPC; partner functions need only MySQL access
+  DatabaseSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Existing RDS security group; this stack adds access from its Lambda security group
+  PaymentDatabaseHost:
+    Type: String
+  PaymentDatabaseName:
+    Type: String
+    Default: adventure_payment
+  PaymentDatabaseUser:
+    Type: String
+    Default: adventure_payment
+  PaymentDatabasePassword:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+  ShippingDatabaseHost:
+    Type: String
+  ShippingDatabaseName:
+    Type: String
+    Default: adventure_shipping
+  ShippingDatabaseUser:
+    Type: String
+    Default: adventure_shipping
+  ShippingDatabasePassword:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    MemorySize: 256
+    Timeout: 15
+    VpcConfig:
+      SecurityGroupIds:
+        - !Ref PartnerSecurityGroup
+      SubnetIds: !Ref SubnetIds
+Resources:
+  PartnerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Lab 9 partner services access to MySQL
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          DestinationSecurityGroupId: !Ref DatabaseSecurityGroupId
+  DatabaseIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref DatabaseSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !Ref PartnerSecurityGroup
+  PaymentApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: dev
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
+  ShippingApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: dev
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
+  PaymentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../services/
+      Handler: payment/handler.handler
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+      Environment:
+        Variables:
+          PAYMENT_DB_HOST: !Ref PaymentDatabaseHost
+          PAYMENT_DB_PORT: '3306'
+          PAYMENT_DB_NAME: !Ref PaymentDatabaseName
+          PAYMENT_DB_USER: !Ref PaymentDatabaseUser
+          PAYMENT_DB_PASSWORD: !Ref PaymentDatabasePassword
+          PAYMENT_DB_SSL: rds
+      Events:
+        Payment:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PaymentApi
+            Path: /payment
+            Method: POST
+  ShippingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../services/
+      Handler: shipping/handler.handler
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+      Environment:
+        Variables:
+          SHIPPING_DB_HOST: !Ref ShippingDatabaseHost
+          SHIPPING_DB_PORT: '3306'
+          SHIPPING_DB_NAME: !Ref ShippingDatabaseName
+          SHIPPING_DB_USER: !Ref ShippingDatabaseUser
+          SHIPPING_DB_PASSWORD: !Ref ShippingDatabasePassword
+          SHIPPING_DB_SSL: rds
+          SHIPPING_TOPIC_ARN: !Ref ShippingTopic
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn: !GetAtt DeliveryFailures.Arn
+      EventInvokeConfig:
+        MaximumRetryAttempts: 2
+        MaximumEventAgeInSeconds: 3600
+      Events:
+        Shipping:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ShippingApi
+            Path: /shipping
+            Method: POST
+  PaymentLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${PaymentFunction}
+      RetentionInDays: 7
+  ShippingLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ShippingFunction}
+      RetentionInDays: 7
+  OrderBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub ${AWS::StackName}-orders
+  ShippingTopic:
+    Type: AWS::SNS::Topic
+  EventDeliveryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: PublishOnlyShippingTopic
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref ShippingTopic
+  ShippingRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName: !Ref OrderBus
+      State: ENABLED
+      EventPattern:
+        source:
+          - adventure-beyond.orders
+        detail-type:
+          - ShipmentRequested
+        detail:
+          schemaVersion:
+            - 1
+      Targets:
+        - Id: ShippingTopic
+          Arn: !Ref ShippingTopic
+          RoleArn: !GetAtt EventDeliveryRole.Arn
+          RetryPolicy:
+            MaximumRetryAttempts: 10
+            MaximumEventAgeInSeconds: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt DeliveryFailures.Arn
+  AllowSnsInvocation:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ShippingFunction
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref ShippingTopic
+      SourceAccount: !Ref AWS::AccountId
+  ShippingSubscription:
+    Type: AWS::SNS::Subscription
+    DependsOn: AllowSnsInvocation
+    Properties:
+      Protocol: lambda
+      TopicArn: !Ref ShippingTopic
+      Endpoint: !GetAtt ShippingFunction.Arn
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeliveryFailures.Arn
+  DeliveryFailures:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+  DeliveryFailuresPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeliveryFailures
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeliveryFailures.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt ShippingRule.Arn
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeliveryFailures.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref ShippingTopic
+Outputs:
+  PaymentApiUrl:
+    Value: !Sub https://${PaymentApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/dev
+  ShippingApiUrl:
+    Value: !Sub https://${ShippingApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/dev
+  PaymentFunctionName:
+    Value: !Ref PaymentFunction
+  ShippingFunctionName:
+    Value: !Ref ShippingFunction
+  EventBusName:
+    Value: !Ref OrderBus
+  EventBusArn:
+    Value: !GetAtt OrderBus.Arn
+  ShippingRuleArn:
+    Value: !GetAtt ShippingRule.Arn
+  ShippingTopicArn:
+    Value: !Ref ShippingTopic
+  DeliveryFailuresUrl:
+    Value: !Ref DeliveryFailures

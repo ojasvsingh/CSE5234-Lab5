@@ -1,0 +1,50 @@
+{
+  "capturedAt": "2026-11-08T05:39:21.604Z",
+  "mode": "LOCAL MySQL + local event transport (not AWS)",
+  "gitCommit": "c7203ef9429698a47bb928621e79a32f72596b36",
+  "uncommittedChanges": true,
+  "orders": [
+    {
+      "viewport": "desktop",
+      "orderId": 4,
+      "confirmation": "AB-00000004",
+      "totalCents": 20700,
+      "status": "New",
+      "paymentToken": "PAY-7C4AEE89E9D7C6216D7B22E0EDC8D6AF",
+      "paymentCardMasked": true,
+      "cvvStored": false,
+      "storePaymentReferenceIsNull": true,
+      "eventId": "cca147f9-b8c3-45c5-a688-0936c6b130c8",
+      "eventPublishedAt": "2026-11-08T05:39:22.000Z",
+      "publishAttempts": 1,
+      "shipmentToken": "SHP-777A6F391C595C6D27A5BAF1F393A02A",
+      "packetCount": 2,
+      "packetWeightsPounds": [
+        2,
+        1
+      ],
+      "matchingShipmentRowsAfterReplay": 1
+    },
+    {
+      "viewport": "mobile",
+      "orderId": 5,
+      "confirmation": "AB-00000005",
+      "totalCents": 20700,
+      "status": "New",
+      "paymentToken": "PAY-B16BCB711C26EA5F130F28BA27559D08",
+      "paymentCardMasked": true,
+      "cvvStored": false,
+      "storePaymentReferenceIsNull": true,
+      "eventId": "ef0b4ecf-5a14-4d04-b301-11d33b2a4df5",
+      "eventPublishedAt": "2026-11-08T05:39:27.000Z",
+      "publishAttempts": 1,
+      "shipmentToken": "SHP-B825567F7176F992CE5AD02E8A1B273A",
+      "packetCount": 2,
+      "packetWeightsPounds": [
+        2,
+        1
+      ],
+      "matchingShipmentRowsAfterReplay": 1
+    }
+  ]
+}

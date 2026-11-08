@@ -1,5 +1,7 @@
 # Run the local application with an RDS database
 
+**This page records the Lab 8 RDS workflow.** On the current Lab 9 branch use [LAB9.md](LAB9.md) for partner database setup and EventBridge/SNS deployment. `dev:rds` alone does not configure the new AWS payment/shipping services; use `lab9:setup`, `lab9:deploy`, and `dev:aws` for that demonstration.
+
 This route keeps the React website and both Node services on your computer, and puts the five database tables in Amazon RDS. It uses [infra/rds-local-access.yaml](../infra/rds-local-access.yaml). It does not require an EC2 server, a NAT gateway, or deployed Lambda functions.
 
 The database has a public endpoint so your computer can connect. Its security group only allows port 3306 from the single public IPv4 address supplied as `ClientCidr`, and MySQL requires TLS. If your network or VPN changes your public IP, update that parameter before reconnecting. Never replace it with an unrestricted address range.

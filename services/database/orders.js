@@ -2,6 +2,8 @@ import { databaseUnavailable, execute, getDatabasePool } from './pool.js';
 import { itemFromRow } from './items.js';
 import { buildReceipt } from '../orders/receipt.js';
 import { HttpError } from '../shared/responses.js';
+import { randomUUID } from 'node:crypto';
+import { buildShipmentEvent } from '../orders/shipment.js';
 
 async function lockedReceipt(connection, quantities) {
   const ids = [...quantities.keys()].sort();
@@ -32,7 +34,7 @@ export function createOrderRepository(poolProvider = getDatabasePool) {
         connection?.release();
       }
     },
-    async save({ quantities, shipping, paymentToken }) {
+    async save({ quantities, shipping, paymentToken, businessId }) {
       let connection;
       try {
         connection = await poolProvider().getConnection();
@@ -53,13 +55,18 @@ export function createOrderRepository(poolProvider = getDatabasePool) {
             'INSERT INTO CUSTOMER_ORDER_LINE_ITEM (ITEM_ID, ITEM_NUMBER, ITEM_NAME, QUANTITY, UNIT_PRICE, CUSTOMER_ORDER_ID_FK) VALUES (?, ?, ?, ?, ?, ?)',
             [row.ID, row.ITEM_NUMBER, row.NAME, item.quantity, row.UNIT_PRICE, orderResult.insertId]);
         }
-        await connection.commit();
-        return {
+        const saved = {
           orderId: orderResult.insertId,
           confirmationNumber: `AB-${orderResult.insertId.toString(16).toUpperCase().padStart(8, '0')}`,
           status: 'New',
           ...receipt,
         };
+        const eventId = randomUUID();
+        const detail = buildShipmentEvent({ shipping, receipt: saved, requestId: eventId, businessId });
+        await execute(connection, 'INSERT INTO SHIPMENT_OUTBOX (ORDER_ID, EVENT_ID, DETAIL) VALUES (?, ?, ?)',
+          [saved.orderId, eventId, JSON.stringify(detail)]);
+        await connection.commit();
+        return saved;
       } catch (error) {
         if (connection) {
           try { await connection.rollback(); } catch { connection.destroy(); }
