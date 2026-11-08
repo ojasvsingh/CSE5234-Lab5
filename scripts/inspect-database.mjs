@@ -7,7 +7,7 @@ export async function inspectDatabase(pool) {
   console.log('Warehouse items');
   console.table(items);
   const [orders] = await pool.query(`SELECT o.ID, CONCAT('AB-', LPAD(HEX(o.ID), 8, '0')) AS CONFIRMATION,
-    o.STATUS, COUNT(li.ID) AS LINE_COUNT, SUM(li.QUANTITY * li.UNIT_PRICE) AS TOTAL, o.CREATED_AT
+    o.STATUS, o.PAYMENT_CONFIRMATION_TOKEN, COUNT(li.ID) AS LINE_COUNT, SUM(li.QUANTITY * li.UNIT_PRICE) AS TOTAL, o.CREATED_AT
     FROM CUSTOMER_ORDER o JOIN CUSTOMER_ORDER_LINE_ITEM li ON li.CUSTOMER_ORDER_ID_FK = o.ID
     GROUP BY o.ID ORDER BY o.ID DESC LIMIT 10`);
   console.log('Latest saved orders (customer details omitted)');

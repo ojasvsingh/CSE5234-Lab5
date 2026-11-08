@@ -31,7 +31,7 @@ curl -i http://127.0.0.1:3002/order-processing/order \
 
 The service requires 1–100 item lines. Each quantity must be an integer from 1 to 99. Duplicate product IDs are combined before checking stock, and their combined quantity cannot exceed 99. Unknown IDs are reported as unavailable. Payment and shipping fields are checked on the server even if the browser already validated them. Shipping email is required. Country defaults to `US`, the only supported country. Address line 2 is optional. Each text field is limited to 200 characters; request bodies are limited to 64 KiB.
 
-The client does not set the price. Submitted prices or totals are ignored. The order service calls the inventory service over HTTP, obtains prices and stock, then rechecks the current database rows in the save transaction and calculates the receipt using integer cents.
+The client does not set the price. Submitted prices or totals are ignored. The order service calls `GET /inventory-management/inventory/items/{id}` once for each line item, checks stock, then posts the card to the payment service. It rechecks the current database rows in the save transaction and calculates the receipt using integer cents. The saved order stores the payment token, not the card.
 
 Success returns HTTP **201**, for example:
 
@@ -95,5 +95,6 @@ The browser uses these quantities to offer a correction. Error responses do not 
 - `GET /health` exists on each **local** service for a quick status check.
 - The order service waits up to 5 seconds for inventory; the browser waits up to 10 seconds for an API response.
 - Responses have `Cache-Control: no-store`. CORS and `OPTIONS` support allow calls from a separately hosted frontend.
-- Successful orders persist a header, item lines, shipping details, and a payment summary in one transaction. Only the masked card number is stored; CVV is never stored. Request bodies are not logged. There is no public order-read endpoint. API Gateway data tracing is not enabled.
+- Successful orders persist a header, item lines, and shipping details in one store transaction. The card is stored, masked, only in the payment database; the store keeps `PAYMENT_CONFIRMATION_TOKEN`. CVV is never stored. Request bodies are not logged. There is no public order-read endpoint. API Gateway data tracing is not enabled.
+- `POST /payment` on port 3003 validates and saves a payment, then returns `{ "confirmationToken": "PAY-XXXXXXXX" }`. `POST /shipping` on port 3004 accepts `businessId`, `address`, `packetCount`, and `weightPounds`, then returns `{ "confirmationToken": "SHP-XXXXXXXX" }`. Checkout does not call shipping; that handoff is the EventBridge step.
 - This checks stock without reserving/decrementing it or charging cards. Disabling duplicate browser submissions prevents extra clicks during one pending request; there is no durable idempotency key.

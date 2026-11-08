@@ -1,5 +1,6 @@
 import { createOrderRepository } from '../database/orders.js';
 import { buildReceipt } from './receipt.js';
+import { buildShipmentEvent } from './shipment.js';
 import { HttpError, json, parseJson } from '../shared/responses.js';
 import { emptyPayment, emptyShipping, validatePayment, validateShipping } from '../shared/validation.js';
 import { lambdaAdapter } from '../shared/lambda.js';
@@ -38,37 +39,83 @@ function validateOrder(order) {
   return { quantities, payment, shipping };
 }
 
+function validItem(item) {
+  return Boolean(item) && typeof item.id === 'string' && typeof item.name === 'string'
+    && Number.isSafeInteger(item.availableQuantity) && item.availableQuantity >= 0
+    && Number.isSafeInteger(item.priceCents) && item.priceCents >= 0 && Number.isSafeInteger(item.priceCents * 99);
+}
+
+async function loadItems(ids, { inventoryUrl, timeoutMs, fetchInventory }) {
+  const catalogue = new Map();
+  const base = inventoryUrl.replace(/\/$/, '');
+  for (const id of ids) {
+    let response;
+    try {
+      // One inventory call per line item. Never import the inventory catalogue.
+      response = await fetchInventory(`${base}/inventory-management/inventory/items/${encodeURIComponent(id)}`, {
+        headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch {
+      throw new HttpError(503, 'INVENTORY_UNAVAILABLE', 'We could not check stock. Your order was not confirmed. Please try again.');
+    }
+    if (response.status === 404) continue;
+    if (!response.ok) throw new HttpError(503, 'INVENTORY_UNAVAILABLE', 'We could not check stock. Your order was not confirmed. Please try again.');
+    let data;
+    try { data = await response.json(); } catch {
+      throw new HttpError(503, 'INVENTORY_UNAVAILABLE', 'We could not check stock. Your order was not confirmed. Please try again.');
+    }
+    if (!validItem(data?.item) || data.item.id !== id) {
+      throw new HttpError(503, 'INVENTORY_UNAVAILABLE', 'We could not check stock. Your order was not confirmed. Please try again.');
+    }
+    catalogue.set(id, data.item);
+  }
+  return catalogue;
+}
+
+async function requestPayment(payment, { paymentUrl, timeoutMs, fetchPayment }) {
+  let response;
+  try {
+    response = await fetchPayment(`${paymentUrl.replace(/\/$/, '')}/payment`, {
+      method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(payment), signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch {
+    throw new HttpError(503, 'PAYMENT_UNAVAILABLE', 'We could not process payment. Your order was not confirmed. Please try again.');
+  }
+  if (!response.ok) throw new HttpError(503, 'PAYMENT_UNAVAILABLE', 'We could not process payment. Your order was not confirmed. Please try again.');
+  let data;
+  try { data = await response.json(); } catch {
+    throw new HttpError(503, 'PAYMENT_UNAVAILABLE', 'We could not process payment. Your order was not confirmed. Please try again.');
+  }
+  if (!data || typeof data.confirmationToken !== 'string' || !/^PAY-[A-F0-9]{8}$/.test(data.confirmationToken)) {
+    throw new HttpError(503, 'PAYMENT_UNAVAILABLE', 'We could not process payment. Your order was not confirmed. Please try again.');
+  }
+  return data.confirmationToken;
+}
+
 export function createOrderRoute({
   inventoryUrl = process.env.INVENTORY_SERVICE_URL || 'http://127.0.0.1:3001',
+  paymentUrl = process.env.PAYMENT_SERVICE_URL || 'http://127.0.0.1:3003',
+  businessId = process.env.STORE_BUSINESS_ID || 'AB-STORE-1001',
   timeoutMs = 5000,
   fetchInventory = fetch,
+  fetchPayment = fetch,
   repository = createOrderRepository(),
+  publishShipment = async () => {},
 } = {}) {
   return async (request) => {
     if (request.path === '/health' && request.method === 'GET') return json(200, { service: 'order-processing', status: 'ok' });
     if (request.path !== '/order-processing/order') throw new HttpError(404, 'NOT_FOUND', 'This order endpoint does not exist.');
     if (request.method !== 'POST') return json(405, { error: { code: 'METHOD_NOT_ALLOWED', message: 'Use POST to submit an order.' } }, { Allow: 'POST, OPTIONS' });
     const order = validateOrder(parseJson(request));
-    const { quantities } = order;
-    let catalogue;
-    try {
-      // Call the other service over HTTP; never import its catalogue.
-      const response = await fetchInventory(`${inventoryUrl.replace(/\/$/, '')}/inventory-management/inventory`, {
-        headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(timeoutMs),
-      });
-      if (!response.ok) throw new Error('Inventory request failed');
-      const data = await response.json();
-      if (!Array.isArray(data.items) || data.items.some((item) => !item || typeof item.id !== 'string'
-        || typeof item.name !== 'string' || !Number.isSafeInteger(item.availableQuantity) || item.availableQuantity < 0
-        || !Number.isSafeInteger(item.priceCents) || item.priceCents < 0 || !Number.isSafeInteger(item.priceCents * 99))) {
-        throw new Error('Invalid inventory response');
-      }
-      catalogue = new Map(data.items.map((item) => [item.id, item]));
-    } catch {
-      throw new HttpError(503, 'INVENTORY_UNAVAILABLE', 'We could not check stock. Your order was not confirmed. Please try again.');
-    }
-    buildReceipt(quantities, catalogue);
-    return json(201, await repository.save(order));
+    const catalogue = await loadItems(order.quantities.keys(), { inventoryUrl, timeoutMs, fetchInventory });
+    buildReceipt(order.quantities, catalogue);
+    await repository.ensureAvailable(order.quantities);
+    const paymentToken = await requestPayment(order.payment, { paymentUrl, timeoutMs, fetchPayment });
+    const saved = await repository.save({ quantities: order.quantities, shipping: order.shipping, paymentToken });
+    // EventBridge publishes this later. Do not call the shipping service directly.
+    await publishShipment(buildShipmentEvent({ shipping: order.shipping, receipt: saved, businessId }));
+    return json(201, saved);
   };
 }
 

@@ -67,14 +67,14 @@ An **API** lets programs exchange requests and responses. A **microservice** is 
 1. The website requests products from the inventory service.
 2. The inventory service runs a SQL query against `ITEM` and returns JSON. Neither service contains a fallback product list.
 3. The customer enters payment and shipping details, including an email address, and submits the order.
-4. The order service validates the fields and calls the inventory service over HTTP, preserving the Lab 7 requirement.
-5. Inside one database **transaction**, it rechecks the current items, saves payment and shipping records, saves the order header, and saves its item lines. A transaction means these writes succeed together or are rolled back together.
+4. The order service validates the fields and calls the inventory service once per line item.
+5. It posts the card to the separate payment service. Inside one database **transaction**, it rechecks the current items, saves the ship-to address, saves the order header with the payment token, and saves its item lines. The card stays in the payment database. A transaction means these store writes succeed together or are rolled back together.
 6. Only after a successful commit does the service return `201`, the saved order ID, an `AB-XXXXXXXX` confirmation, and the receipt. The website then clears the bag.
 
 | Table | What it stores |
 | --- | --- |
 | `ITEM` | Five initial products, prices, quantities, and display information |
-| `CUSTOMER_ORDER` | Customer name/email, links to payment/shipping, and status `New` |
+| `CUSTOMER_ORDER` | Customer name/email, ship-to link, payment token, and status `New` |
 | `CUSTOMER_ORDER_LINE_ITEM` | Each purchased item, requested quantity, and its name/price at purchase time |
 | `PAYMENT_INFO` | Cardholder name, masked card number, and expiration date |
 | `SHIPPING_INFO` | Address, country, and email |
@@ -124,9 +124,13 @@ For SQL examples, manual inserts, and a full requirement checklist, see [docs/DA
 | `GET /inventory-management/inventory` | All database products |
 | `GET /inventory-management/inventory/items/{id}` | Product matching its slug |
 | `GET /inventory-management/inventory/items?name=itemName` | Case-insensitive name search |
-| `POST /order-processing/order` | Saves an order and returns its confirmation, or an error |
+| `POST /order-processing/order` | Checks each item, pays, saves the order, and returns its confirmation |
+| `POST /payment` | Payment service, port 3003. Saves the card in its own database and returns a `PAY-` token |
+| `POST /shipping` | Shipping service, port 3004. Saves a shipment in its own database and returns a `SHP-` token |
 
 Name and `id` query parameters can be combined. Full JSON examples and errors are in [docs/API.md](docs/API.md).
+
+Lab 9, without AWS: an order calls inventory once per line item, then `POST /payment`. The store database saves the payment token and the ship-to address, not the card. It also builds a shipment message (one packet per line item, 1.0 lb each) for EventBridge later. Checkout does not call `/shipping` directly. Run `npm run db:init` once so `adventure_payment`, `adventure_shipping`, and the order token column exist.
 
 | Page | Address |
 | --- | --- |
@@ -152,7 +156,9 @@ All pages share the navigation, footer, and bag, with phone layouts. The Contact
 | Inventory SQL queries | [services/database/items.js](services/database/items.js) |
 | Order transaction | [services/database/orders.js](services/database/orders.js) |
 | Inventory API | [services/inventory/handler.js](services/inventory/handler.js) |
-| Order API and HTTP inventory call | [services/orders/handler.js](services/orders/handler.js) |
+| Order API, per-item inventory calls, and payment call | [services/orders/handler.js](services/orders/handler.js) |
+| Payment API and its database | [services/payment/handler.js](services/payment/handler.js), [database/payment/001-schema.sql](database/payment/001-schema.sql) |
+| Shipping API and its database | [services/shipping/handler.js](services/shipping/handler.js), [database/shipping/001-schema.sql](database/shipping/001-schema.sql) |
 | Input validation | [services/shared/validation.js](services/shared/validation.js) |
 | Browser API calls | [src/lib/api.js](src/lib/api.js) |
 | Shopping/checkout state | [src/context/ShopContext.jsx](src/context/ShopContext.jsx) |
