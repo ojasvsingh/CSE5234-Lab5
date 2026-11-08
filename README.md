@@ -6,7 +6,7 @@ Adventure Beyond is our three-person group's outdoor gear store for **CSE 5234 L
 
 This is a classroom demo. Use the sample customer and payment details below. It does not charge cards, ship products, or send emails.
 
-**Lab 9 AWS deployment was verified on November 8, 2026.** Desktop and mobile orders reached the payment Lambda, existing RDS database, EventBridge, SNS, and shipping Lambda. Repeated messages produced no duplicate shipments. See [the verification record and screenshots](docs/LAB9-VERIFICATION.md) and [the deployment guide](docs/LAB9.md). The cloud demo requires RDS to be running; the local steps below work without AWS and use a clearly labeled event-transport simulation.
+**Lab 9 AWS deployment was verified on November 8, 2026.** Desktop and mobile orders reached the payment Lambda, existing RDS database, EventBridge, SNS, and shipping Lambda. Repeated messages produced no duplicate shipments. See [the verification record and screenshots](docs/LAB9-VERIFICATION.md) and [the deployment guide](docs/LAB9.md). **RDS was stopped after the demonstration**; start it before another cloud demo. The local steps below work without AWS and use a clearly labeled event-transport simulation.
 
 ## 1. Install and start
 

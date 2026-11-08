@@ -78,6 +78,6 @@ The configuration/database verification images are generated from actual AWS CLI
 
 ## After the demonstration
 
-The cloud-connected app and publisher were stopped after all messages were delivered. RDS shutdown was requested to avoid leaving the instance running between demos. The partner functions, APIs, EventBridge/SNS configuration, build bucket, and saved data remain for the next demonstration.
+The cloud-connected app and publisher were stopped after all messages were delivered. **RDS was confirmed `stopped` at 2026-11-08 07:04 UTC (02:04 EST).** AWS reported an automatic restart time of **2026-11-15 07:03:57 UTC (02:03 EST)**. See the [recorded power state](screenshots/lab9-aws/power-state.json). The partner functions, APIs, EventBridge/SNS configuration, build bucket, and saved data remain for the next demonstration.
 
-Check the current RDS status before starting `dev:aws` again; if stopped, renew school login and start the existing instance. Follow [LAB9.md](LAB9.md) for restart and cleanup. The ordinary local app does not require RDS.
+Check the current RDS status before starting `dev:aws` again; if stopped, renew school login and start the existing instance. Follow [LAB9.md](LAB9.md) for restart and cleanup. The ordinary local app was restored after verification and does not require RDS.
