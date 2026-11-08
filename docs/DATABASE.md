@@ -1,5 +1,7 @@
 # Lab 8 database guide
 
+**Historical Lab 8 schema examples.** Lab 9 keeps old rows but moves new payments to a separate database, stores only their token on the order, and adds a shipping outbox and independent shipping database. For current behavior and checks use [LAB9.md](LAB9.md) and `npm run lab9:inspect`. The old card-table joins below apply only to Lab 8 orders.
+
 Lab 8 replaces the hardcoded inventory with MySQL and saves customer orders. Start the database and application using the root README. These examples use the included local database; use fictional data. For the verified RDS deployment, use [RDS-LOCAL.md](RDS-LOCAL.md); `npm run rds:inspect` and `npm run rds:manual` perform the equivalent cloud checks.
 
 ## Inspect the data

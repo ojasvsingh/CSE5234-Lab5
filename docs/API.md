@@ -31,7 +31,7 @@ curl -i http://127.0.0.1:3002/order-processing/order \
 
 The service requires 1–100 item lines. Each quantity must be an integer from 1 to 99. Duplicate product IDs are combined before checking stock, and their combined quantity cannot exceed 99. Unknown IDs are reported as unavailable. Payment and shipping fields are checked on the server even if the browser already validated them. Shipping email is required. Country defaults to `US`, the only supported country. Address line 2 is optional. Each text field is limited to 200 characters; request bodies are limited to 64 KiB.
 
-The client does not set the price. Submitted prices or totals are ignored. The order service calls the inventory service over HTTP, obtains prices and stock, then rechecks the current database rows in the save transaction and calculates the receipt using integer cents.
+The client does not set the price. Submitted prices or totals are ignored. The order service calls `GET /inventory-management/inventory/items/{id}` once for each line item, checks stock, then posts the card to the payment service. It rechecks the current database rows in the save transaction and calculates the receipt using integer cents. The saved order stores the payment token, not the card.
 
 Success returns HTTP **201**, for example:
 
@@ -93,7 +93,54 @@ The browser uses these quantities to offer a correction. Error responses do not 
 ## Service behavior
 
 - `GET /health` exists on each **local** service for a quick status check.
-- The order service waits up to 5 seconds for inventory; the browser waits up to 10 seconds for an API response.
+- The order service allows 5 seconds per inventory/payment HTTP call; the browser waits up to 10 seconds for an API response.
 - Responses have `Cache-Control: no-store`. CORS and `OPTIONS` support allow calls from a separately hosted frontend.
-- Successful orders persist a header, item lines, shipping details, and a payment summary in one transaction. Only the masked card number is stored; CVV is never stored. Request bodies are not logged. There is no public order-read endpoint. API Gateway data tracing is not enabled.
-- This checks stock without reserving/decrementing it or charging cards. Disabling duplicate browser submissions prevents extra clicks during one pending request; there is no durable idempotency key.
+- Successful orders persist a header, item lines, shipping details, and an outbox event in one store transaction. The card is stored, masked, only in the payment database; the store keeps `PAYMENT_CONFIRMATION_TOKEN`. CVV is never stored. Request bodies are not logged. There is no public order-read endpoint. API Gateway data tracing is not enabled.
+- A publisher sends committed outbox events to EventBridge. Its rule routes them to SNS, which invokes the shipping Lambda. Checkout never calls `/shipping`. Local development uses a separate subscriber and a file-based simulation.
+- This checks stock without reserving/decrementing it or charging cards. Disabling duplicate browser submissions prevents extra clicks during one pending request; whole-order retries have no durable idempotency key. Shipping request IDs do provide idempotency.
+
+## Payment API
+
+`POST http://127.0.0.1:3003/payment` accepts the `payment` object from `examples/order.json` directly (not wrapped in another `payment` property):
+
+```json
+{
+  "cardHolderName": "Alex Taylor",
+  "cardNumber": "4242 4242 4242 4242",
+  "expirationDate": "12/35",
+  "cvvCode": "123"
+}
+```
+
+Success is `201` with `{ "confirmationToken": "PAY-0123456789ABCDEF0123456789ABCDEF" }`. The 32 hexadecimal digits are random; the example is illustrative. Invalid fields return `400`, and database failures return `503`.
+
+## Shipping API and event
+
+`POST http://127.0.0.1:3004/shipping`:
+
+```json
+{
+  "requestId": "demo-shipment-001",
+  "businessId": "AB-STORE-1001",
+  "address": {
+    "name": "Alex Taylor",
+    "email": "alex@example.com",
+    "country": "US",
+    "addressLine1": "123 Trailhead Lane",
+    "addressLine2": "",
+    "city": "Columbus",
+    "state": "OH",
+    "zip": "43210"
+  },
+  "packetCount": 2,
+  "packetWeightsPounds": [2, 1]
+}
+```
+
+Success is `201` with `{ "confirmationToken": "SHP-0123456789ABCDEF0123456789ABCDEF" }`. `requestId` is optional for direct HTTP calls; omitting it creates a new request. Reusing it with the same normalized shipment returns the original token. Reusing it with different content returns `409 SHIPMENT_CONFLICT`. It is required for asynchronous events.
+
+Packet count must be an integer from 1 to 100. The weights array must have exactly that many positive numbers, each at most 1000 lb with up to two decimal places. Invalid input returns `400`; database failure returns `503`. Business/request IDs use 1–64 letters, digits, or hyphens.
+
+The EventBridge envelope has `source: "adventure-beyond.orders"`, `detail-type: "ShipmentRequested"`, and `detail` containing the shipment above plus `schemaVersion: 1` and `orderId`. The rule also checks `schemaVersion`. SNS delivers the envelope as JSON text in each `Records[].Sns.Message`.
+
+The Lambda validates the source/type/schema and configured topic ARN, then calls the same shipping repository as the HTTP route. It throws on consumer failure so AWS can retry. Neither the event nor the order response contains payment details.

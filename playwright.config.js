@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
-import { testDatabaseEnv } from './tests/fixtures/database.js';
+import { testDatabaseEnv, testPaymentEnv, testShippingEnv } from './tests/fixtures/database.js';
+
+const prefix = (name, env) => Object.fromEntries(Object.entries(env).map(([key, value]) => [`${name}_${key}`, value]));
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -23,9 +25,16 @@ export default defineConfig({
     command: 'npm run build && npm run preview:all',
     env: {
       ...testDatabaseEnv,
-      INVENTORY_PORT: '4311', ORDER_PORT: '4312', WEB_PORT: '4173',
+      INVENTORY_PORT: '4311', ORDER_PORT: '4312', PAYMENT_PORT: '4313', SHIPPING_PORT: '4314', WEB_PORT: '4173',
       INVENTORY_SERVICE_URL: 'http://127.0.0.1:4311',
       ORDER_SERVICE_URL: 'http://127.0.0.1:4312',
+      PAYMENT_SERVICE_URL: 'http://127.0.0.1:4313',
+      SHIPPING_SERVICE_URL: 'http://127.0.0.1:4314',
+      ...prefix('PAYMENT', testPaymentEnv),
+      ...prefix('SHIPPING', testShippingEnv),
+      EVENT_TRANSPORT: 'local', PARTNER_MODE: 'local', LOCAL_EVENT_DIR: 'test-results/local-events',
+      SHIPPING_TOPIC_ARN: '',
+      STORE_BUSINESS_ID: 'AB-STORE-1001',
       VITE_INVENTORY_API_URL: '', VITE_ORDER_API_URL: '',
     },
     url: 'http://127.0.0.1:4173',

@@ -4,12 +4,18 @@ import { once } from 'node:events';
 import { createServiceServer } from '../../services/shared/http.js';
 import { createInventoryRoute } from '../../services/inventory/handler.js';
 import { createOrderRoute } from '../../services/orders/handler.js';
+import { createPaymentRoute } from '../../services/payment/handler.js';
+import { createShippingRoute, createShippingEventHandler } from '../../services/shipping/handler.js';
+import { createOutboxDispatcher } from '../../services/database/outbox.js';
+import { eventEnvelope } from '../../services/events/publisher.js';
 import { lambdaAdapter } from '../../services/shared/lambda.js';
 import { json } from '../../services/shared/responses.js';
 import { createItemRepository } from '../../services/database/items.js';
 import { createOrderRepository } from '../../services/database/orders.js';
+import { createPaymentRepository } from '../../services/database/payments.js';
+import { createShippingRepository } from '../../services/database/shipments.js';
 import { createDatabasePool } from '../../services/database/pool.js';
-import { createTestPool, prepareTestDatabase, testDatabaseEnv } from '../fixtures/database.js';
+import { createTestPool, prepareTestDatabase, testDatabaseEnv, testPaymentEnv, testShippingEnv } from '../fixtures/database.js';
 import { initializeDatabase } from '../../scripts/database.mjs';
 
 const inventoryPath = '/inventory-management/inventory';
@@ -32,17 +38,25 @@ async function read(url, options) {
 const post = (url, body) => read(url + orderPath, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 let inventory;
 let orders;
+let payments;
 let inventoryCalls = 0;
 const pool = createTestPool();
+const paymentPool = createDatabasePool(testPaymentEnv);
+const shippingPool = createDatabasePool(testShippingEnv);
 const itemRepository = createItemRepository(() => pool);
 const orderRepository = createOrderRepository(() => pool);
+const paymentRepository = createPaymentRepository(() => paymentPool);
+const shippingRepository = createShippingRepository(() => shippingPool);
 before(async () => {
   await prepareTestDatabase();
   const route = createInventoryRoute(itemRepository);
   inventory = await start(request => { inventoryCalls += 1; return route(request); });
-  orders = await start(createOrderRoute({ inventoryUrl: inventory.url, repository: orderRepository }));
+  payments = await start(createPaymentRoute(paymentRepository));
+  orders = await start(createOrderRoute({
+    inventoryUrl: inventory.url, paymentUrl: payments.url, repository: orderRepository,
+  }));
 });
-after(async () => { await orders?.close(); await inventory?.close(); await pool.end(); });
+after(async () => { await orders?.close(); await payments?.close(); await inventory?.close(); await pool.end(); await paymentPool.end(); await shippingPool.end(); });
 
 test('inventory lists JSON records, looks up IDs, and filters names and combined criteria', async () => {
   const all = await read(inventory.url + inventoryPath);
@@ -79,7 +93,7 @@ test('orders call inventory over HTTP and return authoritative totals and a conf
   const callsBefore = inventoryCalls;
   const result = await post(orders.url, order);
   assert.equal(result.status, 201);
-  assert.equal(inventoryCalls, callsBefore + 1);
+  assert.equal(inventoryCalls, callsBefore + 2);
   assert.match(result.data.confirmationNumber, /^AB-[A-Z0-9]{8}$/);
   assert.equal(result.data.totals.totalCents, 20700);
   assert.equal(result.data.items[0].priceCents, 8900);
@@ -167,7 +181,7 @@ test('Lambda handlers preserve API Gateway query parameters, JSON bodies, and CO
   assert.equal(JSON.parse(result.body).items[0].id, 'summit-tent');
   const byId = await inventoryHandler({ httpMethod: 'GET', path: inventoryPath + '/items/camp-bottle', pathParameters: { id: 'camp-bottle' } });
   assert.equal(JSON.parse(byId.body).item.id, 'camp-bottle');
-  const orderHandler = lambdaAdapter(createOrderRoute({ inventoryUrl: inventory.url, repository: orderRepository }));
+  const orderHandler = lambdaAdapter(createOrderRoute({ inventoryUrl: inventory.url, paymentUrl: payments.url, repository: orderRepository }));
   const success = await orderHandler({ httpMethod: 'POST', path: orderPath, headers: { 'Content-Type': 'application/json' }, body: Buffer.from(JSON.stringify(validOrder())).toString('base64'), isBase64Encoded: true });
   assert.equal(success.statusCode, 201);
   assert.equal(success.headers['Access-Control-Allow-Origin'], '*');
@@ -212,17 +226,31 @@ test('orders persist linked rows, exact prices, requested quantities, and defaul
   // A fresh connection represents a new process; no in-memory receipt is involved.
   const freshPool = createTestPool();
   try {
-    const [[saved]] = await freshPool.execute(`SELECT o.*, s.ADDRESS1, s.COUNTRY, s.EMAIL, p.HOLDER_NAME, p.CARD_NUM, p.CVV
+    const [[saved]] = await freshPool.execute(`SELECT o.*, s.ADDRESS1, s.COUNTRY, s.EMAIL
       FROM CUSTOMER_ORDER o JOIN SHIPPING_INFO s ON s.ID = o.SHIPPING_INFO_ID_FK
-      JOIN PAYMENT_INFO p ON p.ID = o.PAYMENT_INFO_ID_FK WHERE o.ID = ?`, [result.data.orderId]);
+      WHERE o.ID = ?`, [result.data.orderId]);
     assert.equal(saved.STATUS, 'New');
     assert.equal(saved.CUSTOMER_NAME, "Alex O'Taylor");
     assert.equal(saved.CUSTOMER_EMAIL, 'alex@example.com');
     assert.equal(saved.EMAIL, saved.CUSTOMER_EMAIL);
     assert.equal(saved.COUNTRY, 'US');
     assert.equal(saved.ADDRESS1, '123 Trailhead Lane');
-    assert.equal(saved.CARD_NUM, '****4242');
-    assert.equal(saved.CVV, null);
+    assert.equal(saved.PAYMENT_INFO_ID_FK, null);
+    assert.match(saved.PAYMENT_CONFIRMATION_TOKEN, /^PAY-[A-F0-9]{32}$/);
+    const [[payment]] = await paymentPool.execute('SELECT HOLDER_NAME, CARD_NUM, CVV FROM PAYMENT_INFO WHERE CONFIRMATION_TOKEN = ?', [saved.PAYMENT_CONFIRMATION_TOKEN]);
+    assert.equal(payment.HOLDER_NAME, 'Alex Taylor');
+    assert.equal(payment.CARD_NUM, '****4242');
+    assert.equal(payment.CVV, null);
+    const [[outbox]] = await freshPool.execute('SELECT DETAIL, PUBLISHED_AT FROM SHIPMENT_OUTBOX WHERE ORDER_ID = ?', [saved.ID]);
+    const shipment = typeof outbox.DETAIL === 'string' ? JSON.parse(outbox.DETAIL) : outbox.DETAIL;
+    assert.equal(outbox.PUBLISHED_AT, null, 'checkout commits before asynchronous delivery');
+    assert.equal(shipment.businessId, 'AB-STORE-1001');
+    assert.equal(shipment.packetCount, 2);
+    assert.deepEqual(shipment.packetWeightsPounds, [2, 1]);
+    assert.equal(shipment.address.name, "Alex O'Taylor");
+    for (const forbidden of ['cardNumber', 'cvvCode', 'confirmationToken', '4242']) {
+      assert.ok(!JSON.stringify(shipment).includes(forbidden));
+    }
     const [lines] = await freshPool.execute('SELECT * FROM CUSTOMER_ORDER_LINE_ITEM WHERE CUSTOMER_ORDER_ID_FK = ? ORDER BY ID', [saved.ID]);
     assert.equal(lines.length, 2);
     assert.equal(lines[0].QUANTITY, 2, 'requested quantity must not become warehouse quantity');
@@ -240,12 +268,13 @@ test('orders persist linked rows, exact prices, requested quantities, and defaul
 });
 
 async function orderRowCounts() {
-  const tables = ['CUSTOMER_ORDER', 'CUSTOMER_ORDER_LINE_ITEM', 'SHIPPING_INFO', 'PAYMENT_INFO'];
+  const tables = ['CUSTOMER_ORDER', 'CUSTOMER_ORDER_LINE_ITEM', 'SHIPPING_INFO', 'PAYMENT_INFO', 'SHIPMENT_OUTBOX'];
   return Promise.all(tables.map(async table => (await pool.query(`SELECT COUNT(*) AS n FROM ${table}`))[0][0].n));
 }
 
-test('a failed line insert rolls back the order, payment, shipping, and earlier lines', async () => {
+test('a failed line insert rolls back the order, shipping, and earlier lines', async () => {
   const counts = await orderRowCounts();
+  const [[{ n: paymentsBefore }]] = await paymentPool.query('SELECT COUNT(*) AS n FROM PAYMENT_INFO');
   let insertedLines = 0;
   const failingRepository = createOrderRepository(() => ({
     async getConnection() {
@@ -265,7 +294,7 @@ test('a failed line insert rolls back the order, payment, shipping, and earlier 
       };
     },
   }));
-  const server = await start(createOrderRoute({ inventoryUrl: inventory.url, repository: failingRepository }));
+  const server = await start(createOrderRoute({ inventoryUrl: inventory.url, paymentUrl: payments.url, repository: failingRepository }));
   try {
     const result = await post(server.url, validOrder());
     assert.equal(result.status, 503);
@@ -274,6 +303,8 @@ test('a failed line insert rolls back the order, payment, shipping, and earlier 
     assert.equal(result.data.confirmationNumber, undefined);
     assert.ok(!JSON.stringify(result.data).includes('private SQL'));
     assert.deepEqual(await orderRowCounts(), counts);
+    const [[{ n: paymentsAfter }]] = await paymentPool.query('SELECT COUNT(*) AS n FROM PAYMENT_INFO');
+    assert.equal(paymentsAfter, paymentsBefore + 1);
   } finally {
     await server.close();
   }
@@ -281,6 +312,7 @@ test('a failed line insert rolls back the order, payment, shipping, and earlier 
 
 test('shortage, invalid email, and unsupported country do not create partial orders', async () => {
   const counts = await orderRowCounts();
+  const [[{ n: paymentsBefore }]] = await paymentPool.query('SELECT COUNT(*) AS n FROM PAYMENT_INFO');
   const short = validOrder();
   short.items[0].quantity = 99;
   assert.equal((await post(orders.url, short)).status, 409);
@@ -293,6 +325,7 @@ test('shortage, invalid email, and unsupported country do not create partial ord
   order.shipping.country = 'CA';
   assert.equal((await post(orders.url, order)).status, 400);
   assert.deepEqual(await orderRowCounts(), counts);
+  assert.equal((await paymentPool.query('SELECT COUNT(*) AS n FROM PAYMENT_INFO'))[0][0].n, paymentsBefore);
 });
 
 test('database failures give 503 without exposing credentials or falling back to sample products', async () => {
@@ -334,5 +367,142 @@ test('a database stock change after the HTTP check is caught before saving', asy
   } finally {
     await pool.execute("UPDATE ITEM SET AVAILABLE_QUANTITY = 12 WHERE SLUG = 'ridge-daypack'");
     await server.close();
+  }
+});
+
+test('a payment outage does not save an order', async () => {
+  const counts = await orderRowCounts();
+  const [[{ n: paymentsBefore }]] = await paymentPool.query('SELECT COUNT(*) AS n FROM PAYMENT_INFO');
+  const server = await start(createOrderRoute({ inventoryUrl: inventory.url, paymentUrl: 'http://127.0.0.1:9', timeoutMs: 200, repository: orderRepository }));
+  try {
+    const result = await post(server.url, validOrder());
+    assert.equal(result.status, 503);
+    assert.equal(result.data.error.code, 'PAYMENT_UNAVAILABLE');
+    assert.equal(result.data.confirmationNumber, undefined);
+    assert.deepEqual(await orderRowCounts(), counts);
+    assert.equal((await paymentPool.query('SELECT COUNT(*) AS n FROM PAYMENT_INFO'))[0][0].n, paymentsBefore);
+  } finally {
+    await server.close();
+  }
+});
+
+test('shipping stores an independent shipment and returns a token', async () => {
+  const shipping = await start(createShippingRoute(shippingRepository));
+  try {
+    const result = await read(shipping.url + '/shipping', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ businessId: 'AB-STORE-1001', packetCount: 2, packetWeightsPounds: [2, 1], address: validOrder().shipping }),
+    });
+    assert.equal(result.status, 201);
+    assert.match(result.data.confirmationToken, /^SHP-[A-F0-9]{32}$/);
+    const [[row]] = await shippingPool.execute('SELECT BUSINESS_ID, PACKET_COUNT, PACKET_WEIGHTS FROM SHIPMENT WHERE CONFIRMATION_TOKEN = ?', [result.data.confirmationToken]);
+    assert.equal(row.BUSINESS_ID, 'AB-STORE-1001');
+    assert.equal(row.PACKET_COUNT, 2);
+    assert.deepEqual(typeof row.PACKET_WEIGHTS === 'string' ? JSON.parse(row.PACKET_WEIGHTS) : row.PACKET_WEIGHTS, [2, 1]);
+    assert.equal((await read(shipping.url + '/shipping')).status, 405);
+  } finally {
+    await shipping.close();
+  }
+});
+
+test('publish failure leaves a committed order retryable; duplicate SNS deliveries create one shipment', async () => {
+  // Earlier tests leave pending messages. Isolate this dispatch without deleting data.
+  await pool.query('UPDATE SHIPMENT_OUTBOX SET NEXT_ATTEMPT_AT = DATE_ADD(NOW(), INTERVAL 1 DAY) WHERE PUBLISHED_AT IS NULL');
+  const result = await post(orders.url, validOrder());
+  assert.equal(result.status, 201);
+  const orderId = result.data.orderId;
+  const failed = createOutboxDispatcher(async () => { throw new Error('private transport failure'); }, () => pool);
+  assert.equal(await failed(), 'retry');
+  const [[pending]] = await pool.execute('SELECT * FROM SHIPMENT_OUTBOX WHERE ORDER_ID = ?', [orderId]);
+  assert.equal(pending.PUBLISHED_AT, null);
+  assert.equal(pending.ATTEMPTS, 1);
+  assert.equal(pending.LAST_ERROR_CODE, 'EVENT_PUBLISH_FAILED');
+  assert.equal((await pool.execute('SELECT STATUS FROM CUSTOMER_ORDER WHERE ID = ?', [orderId]))[0][0].STATUS, 'New');
+  await pool.execute('UPDATE SHIPMENT_OUTBOX SET NEXT_ATTEMPT_AT = NOW() WHERE ORDER_ID = ?', [orderId]);
+  let event;
+  const dispatch = createOutboxDispatcher(async detail => { event = eventEnvelope(detail); }, () => pool);
+  assert.equal(await dispatch(), 'published');
+  assert.equal(await dispatch(), 'idle');
+  const sns = { Records: [{ EventSource: 'aws:sns', Sns: { Message: JSON.stringify(event) } }] };
+  const handler = createShippingEventHandler(shippingRepository);
+  assert.deepEqual(await handler(sns), { processed: 1 });
+  assert.deepEqual(await handler(sns), { processed: 1 });
+  const [shipments] = await shippingPool.execute('SELECT * FROM SHIPMENT WHERE REQUEST_ID = ?', [pending.EVENT_ID]);
+  assert.equal(shipments.length, 1);
+  assert.equal(shipments[0].PACKET_COUNT, 2);
+  const changed = structuredClone(event);
+  changed.detail.packetWeightsPounds = [5, 1];
+  await assert.rejects(handler({ Records: [{ EventSource: 'aws:sns', Sns: { Message: JSON.stringify(changed) } }] }),
+    error => error.code === 'SHIPMENT_CONFLICT');
+  await assert.rejects(createShippingEventHandler({ save: async () => { throw new Error('DB unavailable'); } })(sns),
+    /DB unavailable/, 'a failed consumer must request redelivery');
+});
+
+test('shipping rejects inconsistent packet weights and malformed SNS messages', async () => {
+  const shipping = await start(createShippingRoute(shippingRepository));
+  try {
+    for (const weights of [undefined, 1, [], [1], [1, 0], [1, -2], [1, 0.001], [1, '2'], [1, 1001]]) {
+      const result = await read(shipping.url + '/shipping', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessId: 'AB-STORE-1001', packetCount: 2, packetWeightsPounds: weights, address: validOrder().shipping }),
+      });
+      assert.equal(result.status, 400);
+    }
+    const handler = createShippingEventHandler(shippingRepository);
+    for (const event of [{}, { Records: [] }, { Records: [{ EventSource: 'wrong' }] },
+      { Records: [{ EventSource: 'aws:sns', Sns: { Message: '{private-broken' } }] },
+      { Records: [{ EventSource: 'aws:sns', Sns: { Message: '{"source":"wrong"}' } }] }]) {
+      await assert.rejects(handler(event), error => !error.message.includes('private-broken'));
+    }
+  } finally { await shipping.close(); }
+});
+
+test('partner database users cannot read another service or alter their own schema', async () => {
+  for (const [partner, otherTable, ownTable] of [
+    [paymentPool, 'adventure_shipping_test.SHIPMENT', 'PAYMENT_INFO'],
+    [shippingPool, 'adventure_payment_test.PAYMENT_INFO', 'SHIPMENT'],
+  ]) {
+    for (const table of [otherTable, 'adventure_beyond_test.CUSTOMER_ORDER']) {
+      await assert.rejects(partner.query(`SELECT COUNT(*) FROM ${table}`), error => error.code === 'ER_TABLEACCESS_DENIED_ERROR');
+    }
+    await assert.rejects(partner.query(`ALTER TABLE ${ownTable} ADD COLUMN UNEXPECTED INT`),
+      error => error.code === 'ER_TABLEACCESS_DENIED_ERROR');
+  }
+});
+
+test('partner APIs accept API Gateway v2 bodies with default and named-stage paths', async () => {
+  const paymentHandler = lambdaAdapter(createPaymentRoute(paymentRepository));
+  const shippingHandler = lambdaAdapter(createShippingRoute(shippingRepository));
+  for (const [stage, prefix] of [['$default', ''], ['dev', '/dev'], ['dev', '']]) {
+    const event = {
+      version: '2.0', rawPath: `${prefix}/payment`,
+      requestContext: { stage, http: { method: 'POST' } },
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify(validOrder().payment),
+    };
+    const paid = await paymentHandler(event);
+    assert.equal(paid.statusCode, 201);
+    assert.match(JSON.parse(paid.body).confirmationToken, /^PAY-[A-F0-9]{32}$/);
+    const sent = await shippingHandler({
+      ...event, rawPath: `${prefix}/shipping`,
+      body: JSON.stringify({ businessId: 'AB-STORE-1001', packetCount: 2, packetWeightsPounds: [2, 1], address: validOrder().shipping }),
+    });
+    assert.equal(sent.statusCode, 201);
+    assert.match(JSON.parse(sent.body).confirmationToken, /^SHP-[A-F0-9]{32}$/);
+  }
+});
+
+test('malformed payment responses never create an order or shipping event', async () => {
+  const counts = await orderRowCounts();
+  for (const data of [null, {}, { confirmationToken: 'PAY-SHORT' }]) {
+    const server = await start(createOrderRoute({
+      inventoryUrl: inventory.url, repository: orderRepository,
+      fetchPayment: async () => ({ ok: true, json: async () => data }),
+    }));
+    try {
+      const response = await post(server.url, validOrder());
+      assert.equal(response.status, 503);
+      assert.equal(response.data.error.code, 'PAYMENT_UNAVAILABLE');
+      assert.deepEqual(await orderRowCounts(), counts);
+    } finally { await server.close(); }
   }
 });

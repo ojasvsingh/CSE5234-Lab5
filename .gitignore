@@ -26,3 +26,6 @@ yarn-error.log*
 # Browser test artifacts
 playwright-report/
 test-results/
+.local-events/
+.lab9-build/
+.env.lab9

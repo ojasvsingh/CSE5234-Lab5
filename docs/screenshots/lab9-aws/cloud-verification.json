@@ -1,0 +1,161 @@
+{
+  "capturedAt": "2026-11-08T06:57:11.397Z",
+  "account": "358148451783",
+  "region": "us-east-1",
+  "source": "Live AWS CLI responses and RDS queries; not an AWS Console screenshot",
+  "stackStatus": "CREATE_COMPLETE",
+  "rds": {
+    "status": "available",
+    "engine": "mysql",
+    "version": "8.4.11",
+    "instance": "adventure-beyond-lab8",
+    "class": "db.t4g.micro"
+  },
+  "functions": {
+    "payment": {
+      "name": "adventure-beyond-lab9-PaymentFunction-WqAAcXGNNqyk",
+      "arn": "arn:aws:lambda:us-east-1:358148451783:function:adventure-beyond-lab9-PaymentFunction-WqAAcXGNNqyk",
+      "state": "Active",
+      "update": "Successful",
+      "runtime": "nodejs22.x",
+      "handler": "payment/handler.handler",
+      "vpc": "vpc-03eea8b22b863124e"
+    },
+    "shipping": {
+      "name": "adventure-beyond-lab9-ShippingFunction-AoRNEytSO6KB",
+      "arn": "arn:aws:lambda:us-east-1:358148451783:function:adventure-beyond-lab9-ShippingFunction-AoRNEytSO6KB",
+      "state": "Active",
+      "update": "Successful",
+      "runtime": "nodejs22.x",
+      "handler": "shipping/handler.handler",
+      "vpc": "vpc-03eea8b22b863124e"
+    }
+  },
+  "eventRule": {
+    "name": "adventure-beyond-lab9-ShippingRule-pjpt7jh1EaPN",
+    "state": "ENABLED",
+    "bus": "adventure-beyond-lab9-orders",
+    "pattern": {
+      "detail-type": [
+        "ShipmentRequested"
+      ],
+      "source": [
+        "adventure-beyond.orders"
+      ],
+      "detail": {
+        "schemaVersion": [
+          1
+        ]
+      }
+    },
+    "targets": [
+      {
+        "Id": "ShippingTopic",
+        "Arn": "arn:aws:sns:us-east-1:358148451783:adventure-beyond-lab9-ShippingTopic-tlaMcbB86fxN",
+        "RoleArn": "arn:aws:iam::358148451783:role/adventure-beyond-lab9-EventDeliveryRole-w8E3ttgZ67Us",
+        "DeadLetterConfig": {
+          "Arn": "arn:aws:sqs:us-east-1:358148451783:adventure-beyond-lab9-DeliveryFailures-w1jtgqPWLFPK"
+        },
+        "RetryPolicy": {
+          "MaximumRetryAttempts": 10,
+          "MaximumEventAgeInSeconds": 3600
+        }
+      }
+    ]
+  },
+  "sns": {
+    "topic": "arn:aws:sns:us-east-1:358148451783:adventure-beyond-lab9-ShippingTopic-tlaMcbB86fxN",
+    "subscriptions": [
+      {
+        "SubscriptionArn": "arn:aws:sns:us-east-1:358148451783:adventure-beyond-lab9-ShippingTopic-tlaMcbB86fxN:04152c9a-6d34-4fa5-ad37-7516627dfb62",
+        "Owner": "358148451783",
+        "Protocol": "lambda",
+        "Endpoint": "arn:aws:lambda:us-east-1:358148451783:function:adventure-beyond-lab9-ShippingFunction-AoRNEytSO6KB",
+        "TopicArn": "arn:aws:sns:us-east-1:358148451783:adventure-beyond-lab9-ShippingTopic-tlaMcbB86fxN"
+      }
+    ]
+  },
+  "invokePolicy": {
+    "Version": "2012-10-17",
+    "Id": "default",
+    "Statement": [
+      {
+        "Sid": "adventure-beyond-lab9-AllowSnsInvocation-07eMzl4eghSC",
+        "Effect": "Allow",
+        "Principal": {
+          "Service": "sns.amazonaws.com"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Resource": "arn:aws:lambda:us-east-1:358148451783:function:adventure-beyond-lab9-ShippingFunction-AoRNEytSO6KB",
+        "Condition": {
+          "StringEquals": {
+            "AWS:SourceAccount": "358148451783"
+          },
+          "ArnLike": {
+            "AWS:SourceArn": "arn:aws:sns:us-east-1:358148451783:adventure-beyond-lab9-ShippingTopic-tlaMcbB86fxN"
+          }
+        }
+      },
+      {
+        "Sid": "adventure-beyond-lab9-ShippingFunctionShippingPermission-xXJreg6Mo1nN",
+        "Effect": "Allow",
+        "Principal": {
+          "Service": "apigateway.amazonaws.com"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Resource": "arn:aws:lambda:us-east-1:358148451783:function:adventure-beyond-lab9-ShippingFunction-AoRNEytSO6KB",
+        "Condition": {
+          "ArnLike": {
+            "AWS:SourceArn": "arn:aws:execute-api:us-east-1:358148451783:vt7rp4iu7a/*/POST/shipping"
+          }
+        }
+      }
+    ]
+  },
+  "failureQueue": {
+    "ApproximateNumberOfMessages": "0",
+    "ApproximateNumberOfMessagesNotVisible": "0",
+    "ApproximateNumberOfMessagesDelayed": "0"
+  },
+  "lambdaReports": {
+    "payment": [
+      {
+        "timestamp": "2026-11-08T06:56:28.578Z",
+        "report": "REPORT RequestId: 25f14109-3681-461d-9c6e-f15163aeb779\tDuration: 577.25 ms\tBilled Duration: 578 ms\tMemory Size: 256 MB\tMax Memory Used: 95 MB"
+      },
+      {
+        "timestamp": "2026-11-08T06:56:46.585Z",
+        "report": "REPORT RequestId: 34e1ab5c-0577-4abf-9535-489601ad5e22\tDuration: 104.26 ms\tBilled Duration: 105 ms\tMemory Size: 256 MB\tMax Memory Used: 95 MB"
+      }
+    ],
+    "shipping": [
+      {
+        "timestamp": "2026-11-08T06:56:31.473Z",
+        "report": "REPORT RequestId: 1792fe3c-a347-4126-b1ba-8018737970cd\tDuration: 652.95 ms\tBilled Duration: 653 ms\tMemory Size: 256 MB\tMax Memory Used: 95 MB"
+      },
+      {
+        "timestamp": "2026-11-08T06:56:34.533Z",
+        "report": "REPORT RequestId: 899f531c-77fc-4965-b819-98188f6fa656\tDuration: 128.11 ms\tBilled Duration: 129 ms\tMemory Size: 256 MB\tMax Memory Used: 95 MB"
+      },
+      {
+        "timestamp": "2026-11-08T06:56:48.140Z",
+        "report": "REPORT RequestId: ab3a6d6b-2761-4028-9391-3978e804abe2\tDuration: 121.70 ms\tBilled Duration: 122 ms\tMemory Size: 256 MB\tMax Memory Used: 95 MB"
+      },
+      {
+        "timestamp": "2026-11-08T06:56:49.981Z",
+        "report": "REPORT RequestId: b54c4807-f174-4f24-8bac-f8714a805419\tDuration: 13.98 ms\tBilled Duration: 14 ms\tMemory Size: 256 MB\tMax Memory Used: 95 MB"
+      }
+    ]
+  },
+  "checks": {
+    "unpublishedOrders": 0,
+    "paymentDatabaseIsolated": true,
+    "shippingDatabaseIsolated": true,
+    "storeCannotReadPartnerDatabases": true,
+    "preservedLegacyOrders": 2,
+    "legacyPaymentRows": 2,
+    "priorOrdersUnchanged": 2,
+    "insufficientStockCreatesNoPaymentOrderOrEvent": true,
+    "shippingHttpApiReturnsOriginalToken": true
+  }
+}

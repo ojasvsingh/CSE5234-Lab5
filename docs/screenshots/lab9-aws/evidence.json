@@ -1,0 +1,50 @@
+{
+  "capturedAt": "2026-11-08T06:56:25.561Z",
+  "mode": "AWS payment API + RDS + EventBridge + SNS + shipping Lambda",
+  "gitCommit": "67242bbe2ec2824e08adf292e9de3251247d408f",
+  "uncommittedChanges": true,
+  "orders": [
+    {
+      "viewport": "desktop",
+      "orderId": 4,
+      "confirmation": "AB-00000004",
+      "totalCents": 20700,
+      "status": "New",
+      "paymentToken": "PAY-EBD8284D94671DD1258826F11350ACD4",
+      "paymentCardMasked": true,
+      "cvvStored": false,
+      "storePaymentReferenceIsNull": true,
+      "eventId": "c465ce8d-cd1f-42da-9978-47a6557e1527",
+      "eventPublishedAt": "2026-11-08T06:56:30.000Z",
+      "publishAttempts": 1,
+      "shipmentToken": "SHP-42F1CEB139E3F599666D09FA3701EBFC",
+      "packetCount": 2,
+      "packetWeightsPounds": [
+        2,
+        1
+      ],
+      "matchingShipmentRowsAfterReplay": 1
+    },
+    {
+      "viewport": "mobile",
+      "orderId": 5,
+      "confirmation": "AB-00000005",
+      "totalCents": 20700,
+      "status": "New",
+      "paymentToken": "PAY-D71F731454C9D94E96DF62C4E5FFCF34",
+      "paymentCardMasked": true,
+      "cvvStored": false,
+      "storePaymentReferenceIsNull": true,
+      "eventId": "8f0e74d4-c162-46b7-9e71-a1b9c5865431",
+      "eventPublishedAt": "2026-11-08T06:56:47.000Z",
+      "publishAttempts": 1,
+      "shipmentToken": "SHP-896F4FF0F5FCD81E662C06A1D7A5DEFF",
+      "packetCount": 2,
+      "packetWeightsPounds": [
+        2,
+        1
+      ],
+      "matchingShipmentRowsAfterReplay": 1
+    }
+  ]
+}

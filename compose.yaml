@@ -29,6 +29,8 @@ services:
       MYSQL_USER: adventure_test
       MYSQL_PASSWORD: local-test-password
       MYSQL_ROOT_PASSWORD: local-test-root
+    volumes:
+      - ./database/test-init.sql:/docker-entrypoint-initdb.d/10-partners.sql:ro
     tmpfs:
       - /var/lib/mysql
     healthcheck:

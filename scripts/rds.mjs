@@ -34,7 +34,7 @@ export function openRdsAdmin() {
   return { pool: createDatabasePool(env), env, outputs };
 }
 
-async function setup(pool, env) {
+export async function setup(pool, env) {
   await initializeDatabase(pool);
   const path = new URL('../.env.rds', import.meta.url);
   let app;
@@ -53,9 +53,14 @@ async function setup(pool, env) {
   }
   await pool.query("CREATE USER IF NOT EXISTS 'adventure_app'@'%' IDENTIFIED BY ? REQUIRE SSL", [app.DB_PASSWORD]);
   await pool.query("GRANT SELECT ON ??.ITEM TO 'adventure_app'@'%'", [env.DB_NAME]);
-  for (const table of ['CUSTOMER_ORDER', 'CUSTOMER_ORDER_LINE_ITEM', 'PAYMENT_INFO', 'SHIPPING_INFO']) {
+  for (const table of ['CUSTOMER_ORDER', 'CUSTOMER_ORDER_LINE_ITEM', 'SHIPPING_INFO']) {
     await pool.query("GRANT INSERT ON ??.?? TO 'adventure_app'@'%'", [env.DB_NAME, table]);
   }
+  await pool.query("GRANT SELECT, INSERT, UPDATE ON ??.SHIPMENT_OUTBOX TO 'adventure_app'@'%'", [env.DB_NAME]);
+  const [legacyGrants] = await pool.query(`SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES
+    WHERE GRANTEE = "'adventure_app'@'%'" AND TABLE_SCHEMA = ? AND TABLE_NAME = 'PAYMENT_INFO'
+    AND PRIVILEGE_TYPE = 'INSERT'`, [env.DB_NAME]);
+  if (legacyGrants.length) await pool.query("REVOKE INSERT ON ??.PAYMENT_INFO FROM 'adventure_app'@'%'", [env.DB_NAME]);
   const appPool = createDatabasePool(app);
   try {
     const [[items]] = await appPool.query('SELECT COUNT(*) AS count FROM ITEM');

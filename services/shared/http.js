@@ -27,7 +27,7 @@ export function createServiceServer(route) {
   });
 }
 
-export function listen(route, port, name) {
+export function listen(route, port, name, close = closeDatabasePool) {
   const server = createServiceServer(route);
   server.on('error', (error) => {
     console.error(`${name} could not start (${error.code}). Check that port ${port} is free.`);
@@ -37,7 +37,7 @@ export function listen(route, port, name) {
     console.log(`${name}: http://${process.env.HOST || '127.0.0.1'}:${port}`);
   });
   for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.once(signal, async () => { server.close(); server.closeAllConnections(); await closeDatabasePool(); });
+    process.once(signal, async () => { server.close(); server.closeAllConnections(); await close(); });
   }
   return server;
 }

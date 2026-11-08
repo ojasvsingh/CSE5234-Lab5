@@ -1,12 +1,12 @@
 # Adventure Beyond
 
-Adventure Beyond is our three-person group's outdoor gear store for **CSE 5234 Labs 5–8**. Lab 5 added shopping and checkout; Lab 6 added the company pages; Lab 7 added inventory and order microservices.
+Adventure Beyond is our three-person group's outdoor gear store for **CSE 5234 Labs 5–9**. Earlier labs added the website, company pages, inventory/order services, and MySQL storage.
 
-**Lab 8 adds a MySQL database.** The inventory service reads products from the database. The order service checks stock, saves the order and its related records, and then returns a confirmation number. Orders remain after restarting the application or the local database.
+**Lab 9 connects the services.** An order checks inventory and asks a separate payment service for a payment token. It then saves the order and a shipping message together. A background worker sends the message to a separate shipping service. The customer does not wait for shipping to finish.
 
 This is a classroom demo. Use the sample customer and payment details below. It does not charge cards, ship products, or send emails.
 
-**Lab 8 RDS deployment was verified on November 1, 2026.** The group's `school` account has an RDS MySQL database in `us-east-1`; the local website and microservices read and write that database. Desktop and phone orders were matched to saved SQL records. See [the verification record and screenshots](docs/LAB8-VERIFICATION.md) and [the RDS setup guide](docs/RDS-LOCAL.md). The steps below use a separate local Docker database so every teammate can develop without AWS access.
+**Lab 9 AWS deployment was verified on November 8, 2026.** Desktop and mobile orders reached the payment Lambda, existing RDS database, EventBridge, SNS, and shipping Lambda. Repeated messages produced no duplicate shipments. See [the verification record and screenshots](docs/LAB9-VERIFICATION.md) and [the deployment guide](docs/LAB9.md). **RDS was stopped after the demonstration**; start it before another cloud demo. The local steps below work without AWS and use a clearly labeled event-transport simulation.
 
 ## 1. Install and start
 
@@ -40,10 +40,11 @@ Open **http://127.0.0.1:5173/**. Keep the last terminal running.
 
 | Command | What it does |
 | --- | --- |
-| `npm ci` | Installs the website packages and the backend's MySQL driver from their lockfiles |
+| `npm ci` | Installs the website, MySQL driver, and AWS SDK from their lockfiles |
 | `npm run db:up` | Starts a local MySQL 8.4 container and waits until it is ready; the first run downloads MySQL |
-| `npm run db:init` | Creates the five tables and inserts missing sample products; preserves existing data |
-| `npm run dev` | Starts the website and both microservices |
+| `npm run db:init` | Creates/migrates the store, payment, and shipping databases; preserves existing data |
+| `npm run dev` | Starts the website, four services, and two background workers |
+| `npm run lab9:inspect` | Shows saved orders, payment tokens, shipping messages, and shipments |
 | `npm run db:inspect` | Shows products and the latest saved orders in another terminal |
 | `npm run db:stop` | Stops the local database without deleting its data |
 
@@ -54,38 +55,46 @@ Press **Ctrl+C** to stop the website and services. The database runs separately.
 | Website | `http://127.0.0.1:5173` | The pages you see |
 | Inventory service | `http://127.0.0.1:3001` | Reads product details, prices, and available quantities |
 | Order service | `http://127.0.0.1:3002` | Checks and saves orders |
-| MySQL | `127.0.0.1:33306` | Stores the five tables; this is not a browser URL |
+| Payment service | `http://127.0.0.1:3003/payment` | Saves a demo payment and returns a token |
+| Shipping service | `http://127.0.0.1:3004/shipping` | Accepts shipment requests and returns a token |
+| MySQL | `127.0.0.1:33306` | Hosts three separate databases; this is not a browser URL |
 
 Local development requires no AWS account or `.env` file. The defaults in [compose.yaml](compose.yaml) match the backend. MySQL data lives in the Docker volume `adventure-beyond_mysql-data`. Stopping or restarting the container preserves it. Removing that volume deletes the data.
 
 To change local connection settings, copy [.env.example](.env.example) to `.env` and edit its `DB_` values. The backend reads `.env`; Vite also reads its public `VITE_` values. Never put a database password in a variable starting with `VITE_`. Docker's database/user/password settings initialize a **new** volume only; changing `.env` does not change an existing MySQL user's password.
 
-## 2. Understand Lab 8
+## 2. Understand Lab 9
 
 An **API** lets programs exchange requests and responses. A **microservice** is a separate backend program with one responsibility. A **database table** stores related records, such as products or orders.
 
 1. The website requests products from the inventory service.
 2. The inventory service runs a SQL query against `ITEM` and returns JSON. Neither service contains a fallback product list.
 3. The customer enters payment and shipping details, including an email address, and submits the order.
-4. The order service validates the fields and calls the inventory service over HTTP, preserving the Lab 7 requirement.
-5. Inside one database **transaction**, it rechecks the current items, saves payment and shipping records, saves the order header, and saves its item lines. A transaction means these writes succeed together or are rolled back together.
-6. Only after a successful commit does the service return `201`, the saved order ID, an `AB-XXXXXXXX` confirmation, and the receipt. The website then clears the bag.
+4. The order service validates the fields and calls the inventory service once per line item.
+5. It posts the payment details to the payment service, which saves a masked card record in its own database and returns a `PAY-` token.
+6. In one database **transaction**, the order service rechecks stock and saves the ship-to address, order header with the payment token, item lines, and a pending shipping message. A transaction means these store writes succeed together or roll back together.
+7. After the transaction commits, it returns `201` and an `AB-XXXXXXXX` confirmation. The website clears the bag.
+8. A separate worker reads pending messages. In AWS mode, it publishes to **EventBridge → SNS → shipping Lambda**. The shipping service saves a shipment in its own database and generates an `SHP-` token. In local mode, ignored files and a separate subscriber process simulate that transport.
 
-| Table | What it stores |
+| Database | Tables and responsibility |
 | --- | --- |
-| `ITEM` | Five initial products, prices, quantities, and display information |
-| `CUSTOMER_ORDER` | Customer name/email, links to payment/shipping, and status `New` |
-| `CUSTOMER_ORDER_LINE_ITEM` | Each purchased item, requested quantity, and its name/price at purchase time |
-| `PAYMENT_INFO` | Cardholder name, masked card number, and expiration date |
-| `SHIPPING_INFO` | Address, country, and email |
+| `adventure_beyond` | `ITEM`, `CUSTOMER_ORDER`, `CUSTOMER_ORDER_LINE_ITEM`, `SHIPPING_INFO`, `SHIPMENT_OUTBOX`: the storefront |
+| `adventure_payment` | `PAYMENT_INFO`: masked payment details and the payment token |
+| `adventure_shipping` | `SHIPMENT`: address, business ID, packet weights, request ID, and shipment token |
 
-Every table has a database-generated, auto-incrementing `ID`. Foreign keys connect the records. Payment and shipping tables do **not** contain an order ID. The order header points to them, as the assignment describes. The line-item table points to its order and inventory item.
+Payment and shipping have separate database users that cannot read the storefront or each other's tables. The classroom setup hosts these logical databases on one MySQL server; it does not create three RDS instances. AWS payment and shipping run as separate Lambda functions with separate credentials. There are no cross-database joins or foreign keys in their application logic.
+
+The old storefront `PAYMENT_INFO` table and nullable `PAYMENT_INFO_ID_FK` remain so Lab 8 records are preserved. **New Lab 9 orders leave that foreign key empty and store only `PAYMENT_CONFIRMATION_TOKEN`.** No new card records are written to the storefront.
+
+Each distinct item line becomes **one packet**, regardless of quantity. We assume **1 lb per unit**, so 2 daypacks + 1 bottle means **2 packets weighing [2, 1] lb**, not 3 packets. The handout's 1 lb suggestion conflicts with its 20 lb example; our assumption is explicit in [the requirement checklist](docs/LAB9.md).
+
+`SHIPMENT_OUTBOX` is the pending-message table. If publishing fails, the order stays confirmed and the worker retries after 30 seconds. Duplicate messages keep the same request ID, so shipping creates only one row. The order service never calls the shipping HTTP endpoint directly.
 
 The starter scripts use both `ITEM_ID` and `ITEM_NUMBER`; our line items include both. A separate `SLUG`, such as `ridge-daypack`, keeps the existing API URLs working. Prices use SQL `DECIMAL(10,2)` and integer cents in JSON, avoiding floating-point rounding. The confirmation uses the saved order ID in hexadecimal, padded to eight characters.
 
 The course's sample payment table includes a CVV column. This implementation leaves it `NULL` and saves only the card number's last four digits with a mask. CVV is validated for checkout but never stored. Use fictional customer details because names, email addresses, and shipping addresses **are** saved for Lab 8.
 
-This remains a stock-check demo: placing an order does **not** reserve or decrement stock. Durable idempotency, bank processing, account login, and order-history pages are outside the lab. If a response is lost after a commit, retrying can create another order; the browser only prevents duplicate clicks while a request is pending.
+This remains a stock-check demo: placing an order does **not** reserve or decrement stock. Shipping handles repeated messages, but the whole checkout is not idempotent: retrying after a lost order response can create another order/payment. If payment succeeds and the store transaction fails, the demo payment record remains; automatic refunds and distributed transactions are outside this implementation. No real bank or carrier is contacted.
 
 ## 3. Demonstrate an order and its saved records
 
@@ -95,7 +104,7 @@ This remains a stock-check demo: placing an order does **not** reserve or decrem
 4. Enter the shipping details. The demo supports US addresses.
 5. Review the order, check the confirmation checkbox, and click **Place demo order**.
 6. Note the confirmation number. Refreshing keeps the receipt visible.
-7. In a second terminal, run `npm run db:inspect`. Find the same confirmation with status `New`, two item lines, and total `207.00`.
+7. In a second terminal, run `npm run lab9:inspect`. Match the order's payment token to its payment row, and its event ID to the shipment's request ID. Within a few seconds the message is published and a shipment appears with 2 packets and weights `[2, 1]`.
 8. Stop the app, run `npm run db:stop`, then `npm run db:up` and `npm run db:inspect`. The order is still present.
 
 | Field | Sample value |
@@ -124,9 +133,13 @@ For SQL examples, manual inserts, and a full requirement checklist, see [docs/DA
 | `GET /inventory-management/inventory` | All database products |
 | `GET /inventory-management/inventory/items/{id}` | Product matching its slug |
 | `GET /inventory-management/inventory/items?name=itemName` | Case-insensitive name search |
-| `POST /order-processing/order` | Saves an order and returns its confirmation, or an error |
+| `POST /order-processing/order` | Checks each item, pays, saves the order, and returns its confirmation |
+| `POST /payment` | Payment service, port 3003. Saves masked payment details in its own database and returns a `PAY-` token |
+| `POST /shipping` | Shipping service, port 3004. Saves a shipment in its own database and returns a `SHP-` token |
 
 Name and `id` query parameters can be combined. Full JSON examples and errors are in [docs/API.md](docs/API.md).
+
+Both partner tokens contain 32 random hexadecimal characters after their prefix. The shipping API accepts `packetWeightsPounds`, an array with one weight per packet. [API.md](docs/API.md) includes a copyable request.
 
 | Page | Address |
 | --- | --- |
@@ -151,8 +164,12 @@ All pages share the navigation, footer, and bag, with phone layouts. The Contact
 | MySQL connections and TLS | [services/database/pool.js](services/database/pool.js) |
 | Inventory SQL queries | [services/database/items.js](services/database/items.js) |
 | Order transaction | [services/database/orders.js](services/database/orders.js) |
+| Pending messages and retry | [database/004-lab9-outbox.sql](database/004-lab9-outbox.sql), [services/database/outbox.js](services/database/outbox.js) |
+| EventBridge publisher / local transport | [services/events/publisher.js](services/events/publisher.js) |
 | Inventory API | [services/inventory/handler.js](services/inventory/handler.js) |
-| Order API and HTTP inventory call | [services/orders/handler.js](services/orders/handler.js) |
+| Order API, per-item inventory calls, and payment call | [services/orders/handler.js](services/orders/handler.js) |
+| Payment API and its database | [services/payment/handler.js](services/payment/handler.js), [database/payment/001-schema.sql](database/payment/001-schema.sql) |
+| Shipping API and its database | [services/shipping/handler.js](services/shipping/handler.js), [database/shipping/001-schema.sql](database/shipping/001-schema.sql) |
 | Input validation | [services/shared/validation.js](services/shared/validation.js) |
 | Browser API calls | [src/lib/api.js](src/lib/api.js) |
 | Shopping/checkout state | [src/context/ShopContext.jsx](src/context/ShopContext.jsx) |
@@ -160,6 +177,7 @@ All pages share the navigation, footer, and bag, with phone layouts. The Contact
 | Local database and startup | [compose.yaml](compose.yaml), [scripts/dev.mjs](scripts/dev.mjs) |
 | Local services connected to RDS | [infra/rds-local-access.yaml](infra/rds-local-access.yaml), [scripts/rds.mjs](scripts/rds.mjs), [docs/RDS-LOCAL.md](docs/RDS-LOCAL.md) |
 | Optional AWS-hosted services | [infra/rds.yaml](infra/rds.yaml), [template.yaml](template.yaml), [docs/AWS.md](docs/AWS.md) |
+| Lab 9 AWS partners and routing | [infra/lab9.yaml](infra/lab9.yaml), [scripts/lab9.mjs](scripts/lab9.mjs), [docs/LAB9.md](docs/LAB9.md) |
 
 Edit live products with SQL, then refresh the browser. Editing the seed file does not overwrite existing rows. Backend code changes require restarting `npm run dev`.
 
@@ -176,9 +194,9 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Tests use MySQL on **127.0.0.1:33307** with the database `adventure_beyond_test`. They do not inherit development or RDS connection settings. Run the API and browser suites one after the other, because both use this test database. Its storage is temporary and disappears when its container stops; your development database is separate.
+Tests use MySQL on **127.0.0.1:33307** with three databases ending in `_test`. They do not inherit development or RDS connection settings. Run the API and browser suites one after the other, because both use these test databases. Their storage is temporary and disappears when the container stops; your development database is separate.
 
-The checks cover real SQL reads/writes, transaction rollback, saved price snapshots, missing stock, invalid email, unavailable services, and desktop/mobile checkout. The recorded results and screenshots are in [docs/LAB8-VERIFICATION.md](docs/LAB8-VERIFICATION.md). Browser tests start their own app servers on **4173, 4311, and 4312**, leaving normal development servers alone. `npm run test:unit` runs the pure unit tests without MySQL.
+The checks cover SQL writes, rollback, missing stock, unavailable services, database account isolation, failed event publishing, duplicate SNS events, and desktop/mobile checkout. Results and screenshots are in [docs/LAB9-VERIFICATION.md](docs/LAB9-VERIFICATION.md). Browser tests start their own servers on **4173 and 4311–4314**, leaving normal development servers alone. `npm run test:unit` runs unit tests without MySQL.
 
 To stop only the test database:
 
@@ -197,17 +215,21 @@ Open `http://127.0.0.1:4173`. These commands do not deploy to AWS.
 
 ## 7. AWS and common problems
 
-Lab 8 explicitly requires **Amazon RDS**. [docs/RDS-LOCAL.md](docs/RDS-LOCAL.md) explains how to run this website and its two services on your computer while using an RDS database. This is the simplest cloud demonstration for Lab 8.
+Lab 9 explicitly requires **EventBridge and SNS** for shipping. The supplied deployment reuses the group's Lab 8 RDS instance and runs payment/shipping in AWS. The website, inventory/order services, and order publishing worker run on your laptop. Follow [docs/LAB9.md](docs/LAB9.md) for network checks, deployment, evidence, and cleanup.
 
-After the authorized RDS setup has saved a private `.env.rds`, stop the regular app and use:
+Once school login and RDS access are ready, the cloud workflow is:
 
 ```sh
-npm run dev:rds
+npm run lab9:setup
+npm run lab9:deploy
+npm run dev:aws
 ```
 
-Open the same `http://127.0.0.1:5173` address. In another terminal, `npm run rds:inspect` reads saved cloud orders, and `npm run rds:manual` runs the manual SQL example. These administration commands need an active AWS login. To return to local MySQL, stop the app and use `npm run db:up` followed by `npm run dev`.
+`lab9:setup` creates two logical databases and restricted users, preserving existing store data. `lab9:deploy` creates/updates cloud resources and can incur charges. It is restricted to the group's `school` account. The group's stacks already exist; for another demonstration on the configured laptop, renew school login, start RDS, and use `dev:aws`. Deploy again only when updating the cloud code/configuration.
 
-**Do not copy `.env.rds` into Git or group messages.** Each teammate needs authorized credentials and network access. [docs/AWS.md](docs/AWS.md) covers the separate option of hosting the microservices in AWS too. Resource creation can incur charges; stopping the website does not stop RDS. See the RDS guide for stopping and cleanup.
+`dev:aws` uses the same website address and keeps the event publisher running. In another terminal, use `npm run lab9:inspect:aws`, or run `npm run lab9:capture:aws` followed by `npm run lab9:audit:aws` to refresh the evidence. Capture creates two additional fictional demo orders. To return to local MySQL, stop the app and run `npm run db:up` and `npm run dev`.
+
+**Do not copy `.env.lab9`, `.env.rds`, or `.lab9-build` into Git or group messages.** Each teammate needs authorized credentials and network access. Stopping the website stops its publisher but does not stop RDS or remove AWS resources. [docs/AWS.md](docs/AWS.md) covers the separate option of hosting inventory/order and a scheduled publisher in AWS too; that option needs additional network egress.
 
 | Problem | What to do |
 | --- | --- |
@@ -216,6 +238,7 @@ Open the same `http://127.0.0.1:5173` address. In another terminal, `npm run rds
 | Access denied after changing passwords | Existing MySQL accounts keep their old passwords; restore the matching setting or change the user with SQL |
 | Cannot load products | Check the database and inventory service; the page offers a retry |
 | Cannot place an order | Read the shown error; check inventory and database, or correct shipping/payment fields |
+| Order exists but shipment is missing | Keep `npm run dev` / `dev:aws` running; inspect `SHIPMENT_OUTBOX`. In AWS mode check SSO, EventBridge/SNS, shipping Lambda, and the failure queue |
 | Port already in use | Stop the older process on that port; defaults are listed above |
 | `package.json` not found | Enter the project folder before running npm commands |
 | Refresh returns to payment | Expected: unsubmitted payment/shipping fields are only in memory |

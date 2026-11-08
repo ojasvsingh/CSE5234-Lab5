@@ -4,14 +4,14 @@ import awsCaBundle from 'aws-ssl-profiles';
 import { readFileSync } from 'node:fs';
 import { HttpError } from '../shared/responses.js';
 
-export function createDatabasePool(env = process.env) {
+export function databaseConfig(env = process.env) {
   const sslMode = env.DB_SSL || 'false';
   if (!['false', 'true', 'rds'].includes(sslMode)) throw new Error('DB_SSL must be false, true, or rds.');
   const host = env.DB_HOST || '127.0.0.1';
   if (sslMode === 'false' && !['127.0.0.1', 'localhost', '::1'].includes(host)) {
     throw new Error('Remote databases require DB_SSL=true or DB_SSL=rds.');
   }
-  return mysql.createPool({
+  return {
     host,
     port: Number(env.DB_PORT || 33306),
     database: env.DB_NAME || 'adventure_beyond',
@@ -29,7 +29,31 @@ export function createDatabasePool(env = process.env) {
     charset: 'utf8mb4',
     timezone: 'Z',
     decimalNumbers: false,
-  });
+  };
+}
+
+export function createDatabasePool(env = process.env) {
+  return mysql.createPool(databaseConfig(env));
+}
+
+// Partners never inherit the storefront's database credentials.
+export function partnerDatabaseEnv(kind, env = process.env) {
+  const prefix = kind.toUpperCase();
+  return {
+    DB_HOST: env[`${prefix}_DB_HOST`] || '127.0.0.1',
+    DB_PORT: env[`${prefix}_DB_PORT`] || '33306',
+    DB_NAME: env[`${prefix}_DB_NAME`] || `adventure_${kind}`,
+    DB_USER: env[`${prefix}_DB_USER`] || `adventure_${kind}`,
+    DB_PASSWORD: env[`${prefix}_DB_PASSWORD`] || `local-${kind}-password`,
+    DB_SSL: env[`${prefix}_DB_SSL`] || 'false',
+    DB_SSL_CA: env[`${prefix}_DB_SSL_CA`],
+  };
+}
+
+// Connects without selecting a database so setup can create one.
+export function createServerConnection(env = process.env) {
+  const { host, port, user, password, ssl, connectTimeout } = databaseConfig(env);
+  return mysql.createConnection({ host, port, user, password, ssl, connectTimeout, multipleStatements: false });
 }
 
 let sharedPool;

@@ -1,7 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Adventure Beyond Labs 7-8 microservices connected to an existing MySQL database
+Description: Optional AWS-hosted inventory, order, and outbox publisher; deploy infra/lab9.yaml partners first
 Parameters:
+  PaymentServiceUrl:
+    Type: String
+    Description: PaymentApiUrl from the Lab 9 partner stack, including /dev
+  EventBusName:
+    Type: String
+    Description: EventBusName from the Lab 9 partner stack
   DatabaseHost:
     Type: String
     Description: RDS endpoint hostname (no protocol or port)
@@ -20,11 +26,10 @@ Parameters:
     Description: Security group permitted to reach RDS on port 3306
   PrivateSubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
-    Description: Private subnets in the RDS VPC with NAT egress for the inventory API call
+    Description: Private subnets with NAT egress for inventory/payment HTTPS and EventBridge
 Globals:
   Function:
     Runtime: nodejs22.x
-    CodeUri: services/
     MemorySize: 128
     Timeout: 10
     Environment:
@@ -78,6 +83,7 @@ Resources:
   InventoryFunction:
     Type: AWS::Serverless::Function
     Properties:
+      CodeUri: services/
       Handler: inventory/handler.handler
       Policies:
         - AWSLambdaVPCAccessExecutionRole
@@ -103,12 +109,16 @@ Resources:
   OrderFunction:
     Type: AWS::Serverless::Function
     Properties:
+      CodeUri: services/
+      Timeout: 30
       Handler: orders/handler.handler
       Policies:
         - AWSLambdaVPCAccessExecutionRole
       Environment:
         Variables:
           INVENTORY_SERVICE_URL: !Sub https://${InventoryApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/dev
+          PAYMENT_SERVICE_URL: !Ref PaymentServiceUrl
+          STORE_BUSINESS_ID: AB-STORE-1001
       Events:
         SubmitOrder:
           Type: Api
@@ -116,6 +126,30 @@ Resources:
             RestApiId: !Ref OrderApi
             Path: /order-processing/order
             Method: post
+  OrderPublisher:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: services/
+      Handler: orders/publisher-handler.handler
+      Timeout: 120
+      Environment:
+        Variables:
+          EVENT_TRANSPORT: aws
+          EVENT_BUS_NAME: !Ref EventBusName
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - events:DescribeEventBus
+                - events:PutEvents
+              Resource: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:event-bus/${EventBusName}
+      Events:
+        PublishCommittedOrders:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 minute)
+            Enabled: true
 Outputs:
   InventoryApiUrl:
     Description: Set VITE_INVENTORY_API_URL to this value
