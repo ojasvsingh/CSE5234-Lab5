@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Adventure Beyond storefront with inventory and order microservices for CSE 5234 Labs 5–8",
+  "description": "Adventure Beyond storefront with inventory, order, payment, and shipping services for CSE 5234 Labs 5–9",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
@@ -19,6 +19,8 @@
     "dev:services": "node scripts/dev.mjs --services-only",
     "start:inventory": "node services/inventory/server.js",
     "start:orders": "node services/orders/server.js",
+    "start:payment": "node services/payment/server.js",
+    "start:shipping": "node services/shipping/server.js",
     "preview:all": "node scripts/dev.mjs --preview",
     "test:api": "node --test tests/api/*.test.js",
     "postinstall": "npm ci --prefix services",

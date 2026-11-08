@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { startCheckout, fillPayment, fillShipping } from './helpers.js';
-import { createTestPool } from '../fixtures/database.js';
+import { createDatabasePool } from '../../services/database/pool.js';
+import { createTestPool, testPaymentEnv } from '../fixtures/database.js';
 
 test('browser order is saved in all four order tables with the displayed receipt total', async ({ page }) => {
   await startCheckout(page);
@@ -16,10 +17,18 @@ test('browser order is saved in all four order tables with the displayed receipt
   await expect(page.locator('.confirmation-number')).toHaveText(receipt.confirmationNumber);
   const pool = createTestPool();
   try {
-    const [[order]] = await pool.execute(`SELECT o.STATUS, o.CUSTOMER_EMAIL, s.ADDRESS2, s.COUNTRY, p.CARD_NUM, p.CVV
+    const [[order]] = await pool.execute(`SELECT o.STATUS, o.CUSTOMER_EMAIL, o.PAYMENT_INFO_ID_FK, o.PAYMENT_CONFIRMATION_TOKEN, s.ADDRESS2, s.COUNTRY
       FROM CUSTOMER_ORDER o JOIN SHIPPING_INFO s ON s.ID = o.SHIPPING_INFO_ID_FK
-      JOIN PAYMENT_INFO p ON p.ID = o.PAYMENT_INFO_ID_FK WHERE o.ID = ?`, [receipt.orderId]);
-    expect(order).toMatchObject({ STATUS: 'New', CUSTOMER_EMAIL: 'alex@example.com', ADDRESS2: 'Apt 5', COUNTRY: 'US', CARD_NUM: '****4242', CVV: null });
+      WHERE o.ID = ?`, [receipt.orderId]);
+    expect(order).toMatchObject({ STATUS: 'New', CUSTOMER_EMAIL: 'alex@example.com', ADDRESS2: 'Apt 5', COUNTRY: 'US', PAYMENT_INFO_ID_FK: null });
+    expect(order.PAYMENT_CONFIRMATION_TOKEN).toMatch(/^PAY-[A-F0-9]{8}$/);
+    const paymentPool = createDatabasePool(testPaymentEnv);
+    try {
+      const [[payment]] = await paymentPool.execute('SELECT CARD_NUM, CVV FROM PAYMENT_INFO WHERE CONFIRMATION_TOKEN = ?', [order.PAYMENT_CONFIRMATION_TOKEN]);
+      expect(payment).toMatchObject({ CARD_NUM: '****4242', CVV: null });
+    } finally {
+      await paymentPool.end();
+    }
     const [[lines]] = await pool.execute('SELECT COUNT(*) AS n, SUM(QUANTITY * UNIT_PRICE) AS total FROM CUSTOMER_ORDER_LINE_ITEM WHERE CUSTOMER_ORDER_ID_FK = ?', [receipt.orderId]);
     expect(lines.n).toBe(2);
     expect(lines.total).toBe('207.00');
